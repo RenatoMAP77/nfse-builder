@@ -1,0 +1,22 @@
+# Variáveis de ambiente com chaves secretas — NUNCA commitar
+.env
+
+# Cache do IBGE (pode ser regenerado)
+ibge_codes.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Pastas geradas pelo pipeline (arquivos de saída)
+# Descomente as linhas abaixo se não quiser versionar os outputs:
+# ../EFTs_text/
+# ../municipios_novos/
+
+# conteudo dentro da pasta efts
+EFTs Novas/*.docx
+EFTs Novas PDF/*.pdf
+EFTs txt/*.txt
+Municipios Prontos/*.abap

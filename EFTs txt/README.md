@@ -1,0 +1,1 @@
+Pasta dedicada as efts em sua versão textual, após transcrição do agente de IA.
