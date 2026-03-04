@@ -3,56 +3,96 @@ run_municipios.py — Orquestrador do pipeline de criação de classes municipai
 
 Pipeline:
   1. Scraping IBGE      → ibge_codes.json
-  2. Conversão DOCX→TXT → EFTs_text/*.txt  (com OCR de imagens via GPT-4o)
-  3. Geração ABAP       → municipios_novos/*.clas.abap  (via Claude API)
+  2. Conversão EFT→TXT  → "EFTs txt/"  (PDF/DOCX via claude CLI)
+  3. Geração ABAP       → "Municipios Prontos/"  (via claude CLI)
 
 Uso:
-  python automation/run_municipios.py [opções]
+  python run_municipios.py [opções]
 
 Opções:
-  --skip-ibge          Pula a etapa 1 (usa ibge_codes.json existente)
-  --skip-convert       Pula a etapa 2 (usa EFTs_text/ existente)
-  --only "Caçador SC"  Processa apenas esse município nas etapas 2 e 3
-  --force              Reprocessa arquivos mesmo que já existam
-  --dry-run            Mostra o que seria feito sem executar nada
-  --deploy             Após gerar, executa também o deploy para SAP (etapa 4)
-  --transport XXX      Número do transporte SAP para o deploy (padrão: $TMP)
-  --yes                Pula confirmações interativas no deploy
+  --skip-ibge           Pula scraping do IBGE (usa ibge_codes.json existente)
+  --skip-convert        Pula conversão EFT e usa "EFTs txt/" existente
+  --use-existing-efts   Pula conversão EFT e usa a pasta pré-convertida:
+                          <raiz>/EFTs txt/
+  --only "Cidade UF"    Processa apenas esse município
+  --force               Reprocessa arquivos existentes
+  --dry-run             Mostra o que faria, sem executar
+  --deploy              Executa também deploy SAP (chama 4_deploy_to_sap.py se existir)
+  --transport XXX       Número do transporte SAP (padrão: $TMP)
+  --yes                 Pula confirmações no deploy
 
-Variáveis de ambiente necessárias:
-  OPENAI_API_KEY       Para OCR de imagens (etapa 2)
-  ANTHROPIC_API_KEY    Para geração ABAP (etapa 3)
-
-Exemplo de uso completo:
-  # Primeira execução (faz tudo):
-  python automation/run_municipios.py
-
-  # Execuções subsequentes (IBGE já em cache, força regenerar apenas as classes):
-  python automation/run_municipios.py --skip-ibge --force
-
-  # Processar apenas um município:
-  python automation/run_municipios.py --skip-ibge --only "Caçador SC"
-
-  # Pipeline completo + deploy para SAP:
-  python automation/run_municipios.py --skip-ibge --deploy --transport SRTK123456 --yes
+Não requer variáveis de ambiente — toda IA usa o claude CLI local.
+Certifique-se de que 'claude' está no PATH: npm install -g @anthropic-ai/claude-code
 """
-import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-# Carrega variáveis de ambiente (.env ou prompt interativo)
-sys.path.insert(0, str(Path(__file__).parent))
-from _env import load_env
-
 SCRIPT_DIR = Path(__file__).parent
-BASE_DIR = SCRIPT_DIR.parent
 
 STEP1 = SCRIPT_DIR / "1_scrape_ibge.py"
 STEP2 = SCRIPT_DIR / "2_convert_efts.py"
 STEP3 = SCRIPT_DIR / "3_generate_classes.py"
 STEP4 = SCRIPT_DIR / "4_deploy_to_sap.py"
 
+# Pasta com .txt já prontos (pré-convertidos)
+PREBUILT_EFTS_DIR = SCRIPT_DIR / "EFTs txt"
+LISTA_MD = SCRIPT_DIR / "Municipios Prontos" / "lista_prontos.md"
+
+
+# ---------------------------------------------------------------------------
+# Verificação de pré-requisitos
+# ---------------------------------------------------------------------------
+
+def check_prerequisites():
+    if not shutil.which("claude"):
+        print("ERRO: 'claude' CLI não encontrado.")
+        print("  Instale com: npm install -g @anthropic-ai/claude-code")
+        sys.exit(1)
+    result = subprocess.run(
+        ["claude", "--version"], capture_output=True, text=True, timeout=10
+    )
+    if result.returncode != 0:
+        print("ERRO: claude CLI instalado mas não funcionando corretamente.")
+        sys.exit(1)
+    print(f"  claude CLI: OK ({result.stdout.strip()})")
+
+
+# ---------------------------------------------------------------------------
+# Resolução da pasta de EFTs em texto
+# ---------------------------------------------------------------------------
+
+def resolve_efts_text_dir(args: list[str]) -> tuple[Path, str]:
+    """
+    Retorna (pasta_dos_txt, descrição) conforme as flags passadas.
+    Prioridade: --use-existing-efts > --skip-convert > conversão normal
+    """
+    if "--use-existing-efts" in args:
+        if not PREBUILT_EFTS_DIR.exists():
+            print(f"ERRO: Pasta de EFTs pré-convertidas não encontrada:")
+            print(f"  {PREBUILT_EFTS_DIR}")
+            sys.exit(1)
+        txt_count = len([
+            f for f in PREBUILT_EFTS_DIR.glob("*.txt")
+            if f.name != "README.md"
+        ])
+        return PREBUILT_EFTS_DIR, f"usando pasta pré-convertida ({txt_count} arquivo(s))"
+
+    if "--skip-convert" in args:
+        efts_text = SCRIPT_DIR / "EFTs txt"
+        txt_count = len([
+            f for f in efts_text.glob("*.txt") if f.name != "README.md"
+        ]) if efts_text.exists() else 0
+        return efts_text, f"usando 'EFTs txt/' existente ({txt_count} arquivo(s))"
+
+    # Conversão normal (etapa 2)
+    return SCRIPT_DIR / "EFTs txt", "converter EFTs (etapa 2)"
+
+
+# ---------------------------------------------------------------------------
+# Execução de etapas
+# ---------------------------------------------------------------------------
 
 def banner(text: str):
     print(f"\n{'=' * 60}")
@@ -60,37 +100,11 @@ def banner(text: str):
     print(f"{'=' * 60}")
 
 
-def prompt_env_keys(dry_run: bool, skip_convert: bool):
-    """
-    Carrega as chaves de API necessárias via _env.py.
-    Em dry-run, não solicita nada (usa só o que já está no ambiente).
-    Os subprocessos herdam os valores de os.environ automaticamente.
-    """
-    if dry_run:
-        return
-
-    required = ["ANTHROPIC_API_KEY"]
-    if not skip_convert:
-        required.insert(0, "OPENAI_API_KEY")
-
-    print("\nVerificando chaves de API...\n")
-    load_env(required)
-    print()
-
-
-def run_step(
-    label: str,
-    script: Path,
-    extra_args: list[str],
-    dry_run: bool,
-) -> bool:
-    """
-    Executa um script como subprocesso.
-    Retorna True se sucesso.
-    """
+def run_step(label: str, script: Path, extra_args: list[str], dry_run: bool) -> bool:
+    """Executa um script como subprocesso. Retorna True se sucesso."""
     banner(label)
     cmd = [sys.executable, str(script)] + extra_args
-    print(f"Executando: {' '.join(cmd)}\n")
+    print(f"Executando: {' '.join(str(c) for c in cmd)}\n")
 
     if dry_run:
         print("  [DRY-RUN] Não executado.")
@@ -103,15 +117,19 @@ def run_step(
     return True
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 def main():
     args = sys.argv[1:]
 
-    skip_ibge = "--skip-ibge" in args
-    skip_convert = "--skip-convert" in args
-    dry_run = "--dry-run" in args
-    force = "--force" in args
-    deploy = "--deploy" in args
-    yes = "--yes" in args
+    skip_ibge    = "--skip-ibge" in args
+    skip_convert = "--skip-convert" in args or "--use-existing-efts" in args
+    dry_run      = "--dry-run" in args
+    force        = "--force" in args
+    deploy       = "--deploy" in args
+    yes          = "--yes" in args
 
     only = None
     if "--only" in args:
@@ -129,17 +147,23 @@ def main():
     print("\n" + "=" * 60)
     print("  AUTOMAÇÃO — Classes Municipais NFS-e")
     print("=" * 60)
-    print(f"  Base: {BASE_DIR}")
-    print(f"  EFTs: {BASE_DIR / 'EFTs_municipios'}")
-    print(f"  Saída: {BASE_DIR / 'municipios_novos'}")
+    print(f"  Base:  {SCRIPT_DIR}")
+    print(f"  Saída: {SCRIPT_DIR / 'Municipios Prontos'}")
     if only:
         print(f"  Filtro: '{only}' apenas")
     if dry_run:
         print("  MODO: DRY-RUN (nenhuma ação executada)")
     print()
 
-    # Carrega/solicita chaves de API
-    prompt_env_keys(dry_run, skip_convert)
+    # Verificar claude CLI
+    if not dry_run:
+        print("Verificando pré-requisitos...")
+        check_prerequisites()
+        print()
+
+    # Resolver pasta dos TXTs
+    efts_dir, efts_desc = resolve_efts_text_dir(args)
+    print(f"  EFTs txt: {efts_desc}")
 
     # -----------------------------------------------------------------------
     # Etapa 1: Scraping IBGE
@@ -159,7 +183,7 @@ def main():
         print("\n[PULAR] Etapa 1: usando ibge_codes.json existente.")
 
     # -----------------------------------------------------------------------
-    # Etapa 2: Conversão DOCX → TXT
+    # Etapa 2: Conversão EFT → TXT
     # -----------------------------------------------------------------------
     if not skip_convert:
         conv_args = []
@@ -167,25 +191,26 @@ def main():
             conv_args += ["--only", only]
         if force:
             conv_args.append("--force")
-        ok = run_step("ETAPA 2: Conversão DOCX → TXT (OCR via GPT-4o)", STEP2, conv_args, dry_run)
+        ok = run_step("ETAPA 2: Conversão EFT → TXT (claude CLI)", STEP2, conv_args, dry_run)
         if not ok:
             print("\nPipeline abortado na etapa 2.")
             sys.exit(1)
     else:
-        efts_text_dir = BASE_DIR / "EFTs_text"
-        txt_count = len(list(efts_text_dir.glob("*.txt"))) if efts_text_dir.exists() else 0
-        print(f"\n[PULAR] Etapa 2: usando {txt_count} arquivo(s) .txt existente(s) em EFTs_text/.")
+        txt_count = len([
+            f for f in efts_dir.glob("*.txt") if f.name != "README.md"
+        ]) if efts_dir.exists() else 0
+        print(f"\n[PULAR] Etapa 2: {efts_desc}.")
 
     # -----------------------------------------------------------------------
-    # Etapa 3: Geração das classes ABAP via Claude
+    # Etapa 3: Geração das classes ABAP via claude CLI
     # -----------------------------------------------------------------------
-    gen_args = []
+    gen_args = ["--efts-dir", str(efts_dir)]
     if only:
         gen_args += ["--only", only]
     if force:
         gen_args.append("--force")
 
-    ok = run_step("ETAPA 3: Geração de classes ABAP (Claude API)", STEP3, gen_args, dry_run)
+    ok = run_step("ETAPA 3: Geração de classes ABAP (claude CLI)", STEP3, gen_args, dry_run)
     if not ok:
         print("\nPipeline abortado na etapa 3.")
         sys.exit(1)
@@ -194,43 +219,45 @@ def main():
     # Etapa 4 (opcional): Deploy SAP
     # -----------------------------------------------------------------------
     if deploy:
-        deploy_args = ["--transport", transport]
-        if only:
-            deploy_args += ["--only", only.lower().replace(" ", "")]
-        if yes:
-            deploy_args.append("--yes")
+        if not STEP4.exists():
+            print(f"\n[AVISO] {STEP4} não encontrado — deploy pulado.")
+        else:
+            deploy_args = ["--transport", transport]
+            if only:
+                deploy_args += ["--only", only.lower().replace(" ", "")]
+            if yes:
+                deploy_args.append("--yes")
 
-        ok = run_step("ETAPA 4: Deploy para SAP via ADT", STEP4, deploy_args, dry_run)
-        if not ok:
-            print("\nDeploy finalizado com erros.")
-            sys.exit(1)
-    else:
-        banner("PRÓXIMOS PASSOS")
-        municipios_dir = BASE_DIR / "municipios_novos"
-        generated = list(municipios_dir.glob("*.clas.abap")) if municipios_dir.exists() else []
-        valids = [f for f in generated if not f.name.endswith(".invalid")]
-        invalids = [f for f in generated if f.name.endswith(".invalid")]
+            ok = run_step("ETAPA 4: Deploy para SAP via ADT", STEP4, deploy_args, dry_run)
+            if not ok:
+                print("\nDeploy finalizado com erros.")
+                sys.exit(1)
 
-        print(f"  Arquivos gerados em: {municipios_dir}")
-        print(f"  Classes válidas: {len(valids)}")
-        if invalids:
-            print(f"  Classes para revisar (.invalid): {len(invalids)}")
+    # -----------------------------------------------------------------------
+    # Relatório final
+    # -----------------------------------------------------------------------
+    banner("CONCLUÍDO")
+    output_dir = SCRIPT_DIR / "Municipios Prontos"
+    generated = list(output_dir.glob("*.clas.abap")) if output_dir.exists() else []
+    valids   = [f for f in generated if not f.name.endswith(".invalid")]
+    invalids = [f for f in generated if f.name.endswith(".invalid")]
 
+    print(f"  Arquivos gerados em: {output_dir}")
+    print(f"  Classes válidas:     {len(valids)}")
+    if invalids:
+        print(f"  Para revisar (.invalid): {len(invalids)}")
+        for f in invalids:
+            print(f"    - {f.name}")
+
+    if LISTA_MD.exists():
+        print(f"\n  Registro de municípios: {LISTA_MD}")
+
+    if not deploy:
         print()
         print("  Para fazer deploy ao SAP, execute:")
-        print(f"    python automation/4_deploy_to_sap.py")
+        print(f"    python {STEP4.name}")
         print()
-        print("  Ou para copiar ao repositório e importar via abapGit:")
-        repo_src = (
-            BASE_DIR
-            / "repositorios"
-            / "orbitspot-s4tax_nfse-8bd75d03315f412fd631edb4e617f4afde972e01"
-            / "src"
-        )
-        print(f"    Copiar de: {municipios_dir}")
-        print(f"    Copiar para: {repo_src}")
-
-    banner("CONCLUÍDO")
+        print("  Ou adicione --deploy na próxima execução.")
 
 
 if __name__ == "__main__":
