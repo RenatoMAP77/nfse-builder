@@ -20,3 +20,8 @@ EFTs Novas/*.docx
 EFTs Novas PDF/*.pdf
 EFTs txt/*.txt
 Municipios Prontos/*.abap
+done docx
+done pdf
+done txt
+done abap
+tmp

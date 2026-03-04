@@ -4,8 +4,8 @@ Converte arquivos .pdf e .docx para .txt em "EFTs txt/".
 Imagens são transcritas via claude CLI (sem API keys).
 
 Pastas de entrada:
-  EFTs Novas PDF/   → arquivos .pdf  (preferencial)
-  EFTs Novas/       → arquivos .docx (fallback)
+  EFTs Novas PDF/   -> arquivos .pdf  (preferencial)
+  EFTs Novas/       -> arquivos .docx (fallback)
 
 Pasta de saída:
   EFTs txt/
@@ -15,6 +15,7 @@ Uso:
   --only: processa apenas o arquivo cujo nome contenha esse trecho
   --force: reprocessa mesmo se .txt já existir
 """
+import os
 import shutil
 import subprocess
 import sys
@@ -33,16 +34,24 @@ OUTPUT_DIR     = SCRIPT_DIR / "EFTs txt"
 # Claude CLI helpers
 # ---------------------------------------------------------------------------
 
+def _clean_env() -> dict:
+    """Remove CLAUDECODE para permitir chamada aninhada a partir do Claude Code."""
+    env = os.environ.copy()
+    env.pop("CLAUDECODE", None)
+    return env
+
+
 def call_claude(prompt: str, timeout: int = 120) -> str:
-    """Chama o claude CLI instalado localmente. Sem API keys."""
+    """Chama o claude CLI via stdin. Sem API keys."""
     if not shutil.which("claude"):
         raise RuntimeError(
             "claude CLI não encontrado no PATH. "
             "Execute: npm install -g @anthropic-ai/claude-code"
         )
     result = subprocess.run(
-        ["claude", "--print", "-p", prompt],
-        capture_output=True, text=True, timeout=timeout
+        ["claude", "--print"],
+        input=prompt, env=_clean_env(),
+        capture_output=True, text=True, encoding="utf-8", timeout=timeout
     )
     if result.returncode != 0:
         raise RuntimeError(f"claude CLI erro: {result.stderr[:500]}")
@@ -58,7 +67,8 @@ def call_claude_with_image(prompt: str, image_path: str, timeout: int = 60) -> s
         )
     result = subprocess.run(
         ["claude", "--print", "-p", prompt, image_path],
-        capture_output=True, text=True, timeout=timeout
+        env=_clean_env(),
+        capture_output=True, text=True, encoding="utf-8", timeout=timeout
     )
     if result.returncode != 0:
         raise RuntimeError(f"Erro ao transcrever imagem: {result.stderr[:300]}")
@@ -130,7 +140,7 @@ def _get_docx_images(docx_path: Path) -> dict:
     """Extrai imagens do .docx como {relationship_id: (bytes, ext)}."""
     images = {}
     with zipfile.ZipFile(docx_path, "r") as z:
-        # Carrega mapeamento rid → arquivo de mídia
+        # Carrega mapeamento rid -> arquivo de mídia
         import xml.etree.ElementTree as ET
         rels_path = "word/_rels/document.xml.rels"
         rid_to_media = {}
@@ -275,7 +285,7 @@ def process_file(src_path: Path, file_type: str, force: bool) -> bool:
 # ---------------------------------------------------------------------------
 
 def main():
-    print("=== Etapa 2: Conversão EFT → TXT ===\n")
+    print("=== Etapa 2: Conversão EFT -> TXT ===\n")
     print(f"  Entrada PDF:  {INPUT_DIR_PDF}")
     print(f"  Entrada DOCX: {INPUT_DIR_DOCX}")
     print(f"  Saída:        {OUTPUT_DIR}\n")
@@ -297,7 +307,7 @@ def main():
         sys.exit(0)
 
     if only:
-        print(f"Filtro ativo: '{only}' → {len(files)} arquivo(s)\n")
+        print(f"Filtro ativo: '{only}' -> {len(files)} arquivo(s)\n")
     else:
         print(f"Processando {len(files)} arquivo(s)...\n")
 

@@ -2,9 +2,9 @@
 run_municipios.py — Orquestrador do pipeline de criação de classes municipais NFS-e
 
 Pipeline:
-  1. Scraping IBGE      → ibge_codes.json
-  2. Conversão EFT→TXT  → "EFTs txt/"  (PDF/DOCX via claude CLI)
-  3. Geração ABAP       → "Municipios Prontos/"  (via claude CLI)
+  1. Scraping IBGE      -> ibge_codes.json
+  2. Conversão EFT->TXT  -> "EFTs txt/"  (PDF/DOCX via claude CLI)
+  3. Geração ABAP       -> "Municipios Prontos/"  (via claude CLI)
 
 Uso:
   python run_municipios.py [opções]
@@ -183,7 +183,7 @@ def main():
         print("\n[PULAR] Etapa 1: usando ibge_codes.json existente.")
 
     # -----------------------------------------------------------------------
-    # Etapa 2: Conversão EFT → TXT
+    # Etapa 2: Conversão EFT -> TXT
     # -----------------------------------------------------------------------
     if not skip_convert:
         conv_args = []
@@ -191,7 +191,7 @@ def main():
             conv_args += ["--only", only]
         if force:
             conv_args.append("--force")
-        ok = run_step("ETAPA 2: Conversão EFT → TXT (claude CLI)", STEP2, conv_args, dry_run)
+        ok = run_step("ETAPA 2: Conversão EFT -> TXT (claude CLI)", STEP2, conv_args, dry_run)
         if not ok:
             print("\nPipeline abortado na etapa 2.")
             sys.exit(1)
