@@ -14,19 +14,20 @@ import os
 import sys
 from pathlib import Path
 
-ENV_FILE = Path(__file__).parent / ".env"
+ROOT_DIR = Path(__file__).parent.parent.parent   # nfse-builder/
+ENV_FILE = ROOT_DIR / ".env"
 
 
 def _mask(value: str) -> str:
-    """Mascara a chave para exibição: sk-ant-...XXXX"""
+    """Mascara a chave para exibição."""
     if len(value) <= 8:
         return "****"
     return value[:6] + "..." + value[-4:]
 
 
-def _load_dotenv() -> dict[str, str]:
+def _load_dotenv() -> dict:
     """Carrega o .env sem sobrescrever variáveis já definidas no sistema."""
-    env_values: dict[str, str] = {}
+    env_values = {}
     if not ENV_FILE.exists():
         return env_values
 
@@ -47,7 +48,7 @@ def _load_dotenv() -> dict[str, str]:
     return env_values
 
 
-def load_env(required_keys: list[str], silent: bool = False) -> None:
+def load_env(required_keys: list, silent: bool = False) -> None:
     """
     Garante que todas as chaves em `required_keys` estejam em os.environ.
 
@@ -59,7 +60,7 @@ def load_env(required_keys: list[str], silent: bool = False) -> None:
     missing = []
 
     for key in required_keys:
-        # Caso 1: já definida no ambiente do sistema (ex: $env:KEY = "..." no PowerShell)
+        # Caso 1: já definida no ambiente do sistema
         if os.environ.get(key):
             if not silent:
                 print(f"  {key}: usando valor do ambiente do sistema ({_mask(os.environ[key])})")
@@ -132,11 +133,9 @@ def _append_to_env(key: str, value: str) -> None:
 def interactive_setup() -> None:
     """
     Interativo de configuração inicial do .env.
-    Chamado quando o usuário roda: python _env.py
+    Chamado quando o usuário roda: python src/scripts/_env.py
     """
-    print("\n╔══════════════════════════════════════════════════╗")
-    print("║  Configuração de variáveis de ambiente (.env)   ║")
-    print("╚══════════════════════════════════════════════════╝\n")
+    print("\n=== Configuração de variáveis de ambiente (.env) ===\n")
 
     if ENV_FILE.exists():
         print(f"  Arquivo .env encontrado: {ENV_FILE}")
@@ -145,27 +144,29 @@ def interactive_setup() -> None:
         print()
 
     keys = {
-        "OPENAI_API_KEY": "Chave da API da OpenAI (para OCR de imagens dos .docx)",
-        "ANTHROPIC_API_KEY": "Chave da API da Anthropic/Claude (para geração ABAP)",
+        "SAP_URL": "URL do servidor SAP (ex: http://10.0.0.1:8000)",
+        "SAP_USER": "Usuario SAP",
+        "SAP_PASSWORD": "Senha SAP",
+        "SAP_CLIENT": "Mandante SAP (ex: 400)",
     }
 
     for key, description in keys.items():
         print(f"  {key}")
-        print(f"  → {description}")
+        print(f"    {description}")
         current = os.environ.get(key) or _load_dotenv().get(key, "")
         if current:
-            print(f"  → Valor atual: {_mask(current)}")
-            skip = input("  → Manter valor atual? [S/n] ").strip().lower()
+            print(f"    Valor atual: {_mask(current)}")
+            skip = input("    Manter valor atual? [S/n] ").strip().lower()
             if skip in ("", "s", "sim", "y", "yes"):
                 print()
                 continue
 
-        value = getpass.getpass(f"  → Digite o valor: ").strip()
+        value = getpass.getpass(f"    Digite o valor: ").strip()
         if value:
             _append_to_env(key, value)
-            print(f"  → Salvo.\n")
+            print(f"    Salvo.\n")
         else:
-            print(f"  → Deixado em branco.\n")
+            print(f"    Deixado em branco.\n")
 
     print(f"Configuração salva em: {ENV_FILE}")
     print("Não esqueça de adicionar .env ao .gitignore!\n")

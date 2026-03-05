@@ -11,7 +11,7 @@ Pasta de saída:
   EFTs txt/
 
 Uso:
-  python 2_convert_efts.py [--only "NOME_ARQUIVO"] [--force]
+  python src/scripts/2_convert_efts.py [--only "NOME_ARQUIVO"] [--force]
   --only: processa apenas o arquivo cujo nome contenha esse trecho
   --force: reprocessa mesmo se .txt já existir
 """
@@ -24,10 +24,10 @@ import unicodedata
 import zipfile
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
-INPUT_DIR_PDF  = SCRIPT_DIR / "EFTs Novas PDF"
-INPUT_DIR_DOCX = SCRIPT_DIR / "EFTs Novas"
-OUTPUT_DIR     = SCRIPT_DIR / "EFTs txt"
+ROOT_DIR       = Path(__file__).parent.parent.parent   # nfse-builder/
+INPUT_DIR_PDF  = ROOT_DIR / "EFTs Novas PDF"
+INPUT_DIR_DOCX = ROOT_DIR / "EFTs Novas"
+OUTPUT_DIR     = ROOT_DIR / "EFTs txt"
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ def convert_pdf_to_text(pdf_path: Path) -> str:
             tmp_img.write_bytes(image_bytes)
 
             image_counter += 1
-            print(f"    Transcrevendo imagem {image_counter} (pág {page_num + 1})...")
+            print(f"    Transcrevendo imagem {image_counter} (pag {page_num + 1})...")
             try:
                 transcription = call_claude_with_image(IMAGE_PROMPT, str(tmp_img))
                 lines.append(f"\n[IMAGEM {image_counter} TRANSCRITA]")
@@ -227,7 +227,7 @@ def normalize(name: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
 
-def collect_source_files(only: str | None) -> list[tuple[Path, str]]:
+def collect_source_files(only) -> list:
     """
     Retorna lista de (arquivo_fonte, tipo) para processar.
     Prioriza PDF quando o mesmo stem existe nos dois formatos.
@@ -288,7 +288,7 @@ def main():
     print("=== Etapa 2: Conversão EFT -> TXT ===\n")
     print(f"  Entrada PDF:  {INPUT_DIR_PDF}")
     print(f"  Entrada DOCX: {INPUT_DIR_DOCX}")
-    print(f"  Saída:        {OUTPUT_DIR}\n")
+    print(f"  Saida:        {OUTPUT_DIR}\n")
 
     force = "--force" in sys.argv
     only = None
@@ -321,7 +321,7 @@ def main():
         else:
             errors += 1
 
-    print(f"\nConcluído: {success} convertido(s), {errors} erro(s).")
+    print(f"\nConcluido: {success} convertido(s), {errors} erro(s).")
     if errors:
         sys.exit(1)
 

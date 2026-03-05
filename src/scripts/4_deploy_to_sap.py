@@ -1,10 +1,10 @@
 """
 4_deploy_to_sap.py
-Deploy opcional: lê os .clas.abap de municipios_novos/ e cria/atualiza as classes
+Deploy opcional: lê os .clas.abap de "Municipios Prontos/" e cria/atualiza as classes
 diretamente no SAP via API REST do ADT.
 
 Uso:
-  python 4_deploy_to_sap.py [--only sc4202305] [--yes] [--transport SRTK123456]
+  python src/scripts/4_deploy_to_sap.py [--only sc4202305] [--yes] [--transport SRTK123456]
   --only:      processa apenas a classe com esse sufixo (ex: sc4202305)
   --yes:       pula confirmação interativa
   --transport: número do transporte SAP (ex: SRTK123456); se omitido, usa $TMP
@@ -20,12 +20,13 @@ from pathlib import Path
 
 import requests
 
-BASE_DIR = Path(__file__).parent.parent
-INPUT_DIR = BASE_DIR / "municipios_novos"
-MCP_JSON = BASE_DIR / ".mcp.json"
+ROOT_DIR       = Path(__file__).parent.parent.parent   # nfse-builder/
+PROJECT_DIR    = ROOT_DIR.parent.parent                 # claude_abap/
+INPUT_DIR      = ROOT_DIR / "Municipios Prontos"
+MCP_JSON       = PROJECT_DIR / ".mcp.json"
 
-SAP_PACKAGE = "/S4TAX/NFSE"
-DEFAULT_TRANSPORT = "$TMP"
+SAP_PACKAGE        = "/S4TAX/NFSE"
+DEFAULT_TRANSPORT  = "$TMP"
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +167,7 @@ class SapAdtClient:
         data = resp.json() if resp.content else {}
         lock_handle = data.get("com.sap.adt.lock.v1:lockHandle", {}).get("com.sap.adt.lock.v1:lockHandleId", "")
         if not lock_handle:
-            # Tenta extrair do XML ou do header
+            # Tenta extrair do header
             lock_handle = resp.headers.get("X-SAP-Lock-Handle", "")
         return lock_handle
 
@@ -234,7 +235,7 @@ class SapAdtClient:
 # Lógica de deploy
 # ---------------------------------------------------------------------------
 
-def extract_class_name_from_file(abap_path: Path) -> str | None:
+def extract_class_name_from_file(abap_path: Path):
     """Extrai o nome da classe do arquivo .clas.abap."""
     content = abap_path.read_text(encoding="utf-8", errors="ignore")
     m = re.search(r"CLASS\s+(/s4tax/\S+)\s+DEFINITION", content, re.IGNORECASE)
@@ -267,7 +268,7 @@ def deploy_class(
     package_info = f"pacote {SAP_PACKAGE}, transporte {transport}"
 
     print(f"\n  Classe: {class_name.upper()}")
-    print(f"  Ação: {action} ({package_info})")
+    print(f"  Acao: {action} ({package_info})")
 
     if not yes:
         resp = input("  Confirmar? [s/N] ").strip().lower()
@@ -323,7 +324,7 @@ def deploy_class(
         result["status"] = "deployed"
 
     except Exception as e:
-        result["error"] = f"Exceção: {e}"
+        result["error"] = f"Excecao: {e}"
 
     return result
 
@@ -349,7 +350,7 @@ def main():
 
     if not INPUT_DIR.exists():
         print(f"ERRO: Pasta {INPUT_DIR} não encontrada.")
-        print("  Execute primeiro: python run_municipios.py")
+        print("  Execute primeiro: python src/run_municipios.py")
         sys.exit(1)
 
     abap_files = [
@@ -367,7 +368,7 @@ def main():
             print(f"ERRO: Nenhum arquivo encontrado com '{only}' no nome.")
             sys.exit(1)
 
-    print(f"Deploy de {len(abap_files)} classe(s) → SAP {SAP_PACKAGE}")
+    print(f"Deploy de {len(abap_files)} classe(s) -> SAP {SAP_PACKAGE}")
     print(f"Transporte: {transport}")
 
     config = load_sap_config()
@@ -382,14 +383,14 @@ def main():
     print("\nTestando conexão SAP...")
     try:
         client._fetch_csrf()
-        print(f"  Conectado: {config['url']} (usuário: {config['user']})")
+        print(f"  Conectado: {config['url']} (usuario: {config['user']})")
     except Exception as e:
         print(f"  ERRO de conexão: {e}")
         sys.exit(1)
 
     results = []
     for abap_path in abap_files:
-        print(f"\n→ {abap_path.name}")
+        print(f"\n-> {abap_path.name}")
         r = deploy_class(client, abap_path, transport, yes)
         results.append(r)
         if r.get("error"):

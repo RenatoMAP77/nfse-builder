@@ -5,8 +5,8 @@ Lê os .txt de "EFTs txt/" (ou --efts-dir), busca o código IBGE em ibge_codes.j
 e chama o claude CLI para gerar o código ABAP.
 
 Uso:
-  python 3_generate_classes.py [--only "Caçador SC"] [--force] [--efts-dir CAMINHO]
-  --only: processa apenas o município/UF informado (ex: "Caçador SC")
+  python src/scripts/3_generate_classes.py [--only "Cacador SC"] [--force] [--efts-dir CAMINHO]
+  --only: processa apenas o município/UF informado (ex: "Cacador SC")
   --force: regera mesmo se o .clas.abap já existir
   --efts-dir: pasta com os .txt de EFT (padrão: <raiz>/EFTs txt)
 
@@ -23,14 +23,14 @@ import unicodedata
 from datetime import datetime
 from pathlib import Path
 
-SCRIPT_DIR  = Path(__file__).parent
-PROJECT_DIR = SCRIPT_DIR.parent.parent          # claude_abap/
+ROOT_DIR    = Path(__file__).parent.parent.parent   # nfse-builder/
+PROJECT_DIR = ROOT_DIR.parent.parent                # claude_abap/
 
-OUTPUT_DIR  = SCRIPT_DIR / "Municipios Prontos"
-IBGE_FILE   = SCRIPT_DIR / "ibge_codes.json"
+OUTPUT_DIR  = ROOT_DIR / "Municipios Prontos"
+IBGE_FILE   = ROOT_DIR / "ibge_codes.json"
 NFSE_MD     = PROJECT_DIR / "nfse-municipios.md"
 CLAUDE_MD   = PROJECT_DIR / "CLAUDE.md"
-LISTA_MD    = SCRIPT_DIR / "Municipios Prontos" / "lista_prontos.md"
+LISTA_MD    = ROOT_DIR / "Municipios Prontos" / "lista_prontos.md"
 
 # Exemplos few-shot preferidos (buscados dinamicamente no repo)
 FEW_SHOT_PREFERRED = [
@@ -79,7 +79,7 @@ def normalize(name: str) -> str:
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
 
 
-def parse_eft_filename(stem: str) -> tuple[str, str] | None:
+def parse_eft_filename(stem: str):
     """Extrai (cidade, UF) do nome do arquivo sem extensão. None se falhar."""
     for pattern in FILENAME_PATTERNS:
         m = pattern.search(stem)
@@ -90,7 +90,7 @@ def parse_eft_filename(stem: str) -> tuple[str, str] | None:
     return None
 
 
-def find_ibge_code(ibge_data: dict, city: str, uf: str) -> tuple[str | None, str | None]:
+def find_ibge_code(ibge_data: dict, city: str, uf: str):
     """
     Busca código IBGE para (cidade, UF).
     Retorna (ibge_code, matched_name) ou (None, None).
@@ -121,12 +121,12 @@ def load_text_file(path: Path, label: str) -> str:
     return ""
 
 
-def find_repo_src() -> Path | None:
+def find_repo_src():
     candidates = list(PROJECT_DIR.glob("repositorios/orbitspot-s4tax_nfse-*/src"))
     return candidates[0] if candidates else None
 
 
-def load_few_shot_examples(repo_src: Path | None) -> str:
+def load_few_shot_examples(repo_src) -> str:
     if not repo_src:
         print("  [AVISO] Repositório NFS-e não encontrado — sem exemplos few-shot.")
         return ""
@@ -218,8 +218,8 @@ def clean_generated_code(raw: str, city: str, uf: str) -> str:
     Limpa o output do Claude:
     - Remove blocos markdown (```abap ... ```)
     - Remove qualquer texto antes de 'CLASS /s4tax/'
-    - Remove qualquer texto após 'ENDCLASS.'
-    - Garante o comentário '\" Cidade/UF' após CREATE PUBLIC.
+    - Remove qualquer texto após o último ENDCLASS.
+    - Garante o comentário '" Cidade/UF' após CREATE PUBLIC.
     """
     # Remove markdown
     raw = re.sub(r"^```(?:abap)?\s*\n", "", raw.strip(), flags=re.MULTILINE)
@@ -250,7 +250,7 @@ def clean_generated_code(raw: str, city: str, uf: str) -> str:
     return raw
 
 
-def validate(code: str, class_name: str, tax_address: str) -> list[str]:
+def validate(code: str, class_name: str, tax_address: str) -> list:
     errors = []
     if f"CLASS {class_name} DEFINITION" not in code:
         errors.append(f"Falta 'CLASS {class_name} DEFINITION'")
@@ -285,7 +285,7 @@ def update_lista_prontos(city: str, uf: str, ibge_code: str) -> None:
 
     for i, line in enumerate(lines):
         if f"| {entry_key} |" in line or f"|{entry_key}|" in line:
-            # Atualiza coluna "Ultima modificação" (4ª coluna)
+            # Atualiza coluna "Ultima modificacao" (4a coluna)
             parts = [p.strip() for p in line.split("|")]
             if len(parts) >= 5:
                 parts[4] = today
@@ -411,7 +411,7 @@ def main():
         sys.exit(1)
 
     # Diretório dos .txt (pode ser sobrescrito via --efts-dir)
-    input_dir = SCRIPT_DIR / "EFTs txt"
+    input_dir = ROOT_DIR / "EFTs txt"
     if "--efts-dir" in sys.argv:
         idx = sys.argv.index("--efts-dir")
         if idx + 1 < len(sys.argv):
@@ -426,7 +426,7 @@ def main():
 
     if not IBGE_FILE.exists():
         print(f"ERRO: {IBGE_FILE} não encontrado.")
-        print("  Execute primeiro: python 1_scrape_ibge.py")
+        print("  Execute primeiro: python src/scripts/1_scrape_ibge.py")
         sys.exit(1)
 
     force = "--force" in sys.argv
@@ -442,8 +442,8 @@ def main():
     claude_md    = load_text_file(CLAUDE_MD, "CLAUDE.md")
     repo_src     = find_repo_src()
     examples     = load_few_shot_examples(repo_src)
-    print(f"  Arquitetura: {'OK' if architecture else 'NÃO ENCONTRADO'}")
-    print(f"  CLAUDE.md:   {'OK' if claude_md else 'NÃO ENCONTRADO'}")
+    print(f"  Arquitetura: {'OK' if architecture else 'NAO ENCONTRADO'}")
+    print(f"  CLAUDE.md:   {'OK' if claude_md else 'NAO ENCONTRADO'}")
     print(f"  Exemplos:    {len([e for e in [examples] if e])} carregados")
 
     # Dados IBGE
@@ -480,7 +480,7 @@ def main():
     errors  = [r for r in results if r["status"] == "error"]
 
     print("=" * 60)
-    print(f"RELATÓRIO: {len(created)} criado(s) | {len(skipped)} pulado(s) | {len(errors)} erro(s)")
+    print(f"RELATORIO: {len(created)} criado(s) | {len(skipped)} pulado(s) | {len(errors)} erro(s)")
     print("=" * 60)
 
     if created:

@@ -1,7 +1,7 @@
 """
 1_scrape_ibge.py
 Faz scraping do site do IBGE e salva os códigos dos municípios em ibge_codes.json.
-Uso: python 1_scrape_ibge.py [--force]
+Uso: python src/scripts/1_scrape_ibge.py [--force]
   --force: recria o cache mesmo se já existir
 """
 import json
@@ -12,8 +12,9 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 
-IBGE_URL = "https://www.ibge.gov.br/explica/codigos-dos-municipios.php"
-OUTPUT_FILE = Path(__file__).parent / "ibge_codes.json"
+ROOT_DIR    = Path(__file__).parent.parent.parent   # nfse-builder/
+IBGE_URL    = "https://www.ibge.gov.br/explica/codigos-dos-municipios.php"
+OUTPUT_FILE = ROOT_DIR / "ibge_codes.json"
 
 
 def normalize(name: str) -> str:
@@ -23,7 +24,7 @@ def normalize(name: str) -> str:
     return ascii_str.lower().strip()
 
 
-def scrape_ibge() -> dict[str, dict[str, str]]:
+def scrape_ibge() -> dict:
     """
     Retorna dicionário no formato:
       { "SC": { "cacador": "4202305", "florianopolis": "4205407", ... }, ... }
@@ -48,7 +49,7 @@ def scrape_ibge() -> dict[str, dict[str, str]]:
             "O layout do site pode ter mudado."
         )
 
-    result: dict[str, dict[str, str]] = {}
+    result = {}
     total = 0
 
     for table in tables:

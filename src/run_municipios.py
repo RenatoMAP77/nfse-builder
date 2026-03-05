@@ -7,7 +7,7 @@ Pipeline:
   3. Geração ABAP       -> "Municipios Prontos/"  (via claude CLI)
 
 Uso:
-  python run_municipios.py [opções]
+  python src/run_municipios.py [opções]
 
 Opções:
   --skip-ibge           Pula scraping do IBGE (usa ibge_codes.json existente)
@@ -29,16 +29,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).parent
+SRC_DIR  = Path(__file__).parent          # nfse-builder/src/
+ROOT_DIR = SRC_DIR.parent                 # nfse-builder/
 
-STEP1 = SCRIPT_DIR / "1_scrape_ibge.py"
-STEP2 = SCRIPT_DIR / "2_convert_efts.py"
-STEP3 = SCRIPT_DIR / "3_generate_classes.py"
-STEP4 = SCRIPT_DIR / "4_deploy_to_sap.py"
+STEP1 = SRC_DIR / "scripts" / "1_scrape_ibge.py"
+STEP2 = SRC_DIR / "scripts" / "2_convert_efts.py"
+STEP3 = SRC_DIR / "scripts" / "3_generate_classes.py"
+STEP4 = SRC_DIR / "scripts" / "4_deploy_to_sap.py"
 
 # Pasta com .txt já prontos (pré-convertidos)
-PREBUILT_EFTS_DIR = SCRIPT_DIR / "EFTs txt"
-LISTA_MD = SCRIPT_DIR / "Municipios Prontos" / "lista_prontos.md"
+PREBUILT_EFTS_DIR = ROOT_DIR / "EFTs txt"
+LISTA_MD = ROOT_DIR / "Municipios Prontos" / "lista_prontos.md"
 
 
 # ---------------------------------------------------------------------------
@@ -63,9 +64,9 @@ def check_prerequisites():
 # Resolução da pasta de EFTs em texto
 # ---------------------------------------------------------------------------
 
-def resolve_efts_text_dir(args: list[str]) -> tuple[Path, str]:
+def resolve_efts_text_dir(args: list) -> tuple:
     """
-    Retorna (pasta_dos_txt, descrição) conforme as flags passadas.
+    Retorna (pasta_dos_txt, descricao) conforme as flags passadas.
     Prioridade: --use-existing-efts > --skip-convert > conversão normal
     """
     if "--use-existing-efts" in args:
@@ -80,27 +81,27 @@ def resolve_efts_text_dir(args: list[str]) -> tuple[Path, str]:
         return PREBUILT_EFTS_DIR, f"usando pasta pré-convertida ({txt_count} arquivo(s))"
 
     if "--skip-convert" in args:
-        efts_text = SCRIPT_DIR / "EFTs txt"
+        efts_text = ROOT_DIR / "EFTs txt"
         txt_count = len([
             f for f in efts_text.glob("*.txt") if f.name != "README.md"
         ]) if efts_text.exists() else 0
         return efts_text, f"usando 'EFTs txt/' existente ({txt_count} arquivo(s))"
 
     # Conversão normal (etapa 2)
-    return SCRIPT_DIR / "EFTs txt", "converter EFTs (etapa 2)"
+    return ROOT_DIR / "EFTs txt", "converter EFTs (etapa 2)"
 
 
 # ---------------------------------------------------------------------------
 # Execução de etapas
 # ---------------------------------------------------------------------------
 
-def banner(text: str):
+def banner(text):
     print(f"\n{'=' * 60}")
     print(f"  {text}")
     print(f"{'=' * 60}")
 
 
-def run_step(label: str, script: Path, extra_args: list[str], dry_run: bool) -> bool:
+def run_step(label, script, extra_args, dry_run):
     """Executa um script como subprocesso. Retorna True se sucesso."""
     banner(label)
     cmd = [sys.executable, str(script)] + extra_args
@@ -145,10 +146,10 @@ def main():
 
     # Cabeçalho
     print("\n" + "=" * 60)
-    print("  AUTOMAÇÃO — Classes Municipais NFS-e")
+    print("  AUTOMACAO — Classes Municipais NFS-e")
     print("=" * 60)
-    print(f"  Base:  {SCRIPT_DIR}")
-    print(f"  Saída: {SCRIPT_DIR / 'Municipios Prontos'}")
+    print(f"  Base:  {ROOT_DIR}")
+    print(f"  Saida: {ROOT_DIR / 'Municipios Prontos'}")
     if only:
         print(f"  Filtro: '{only}' apenas")
     if dry_run:
@@ -175,7 +176,7 @@ def main():
             print("\nPipeline abortado na etapa 1.")
             sys.exit(1)
     else:
-        ibge_file = SCRIPT_DIR / "ibge_codes.json"
+        ibge_file = ROOT_DIR / "ibge_codes.json"
         if not ibge_file.exists() and not dry_run:
             print("\nERRO: --skip-ibge informado mas ibge_codes.json não existe.")
             print("  Execute sem --skip-ibge primeiro.")
@@ -236,21 +237,21 @@ def main():
     # -----------------------------------------------------------------------
     # Relatório final
     # -----------------------------------------------------------------------
-    banner("CONCLUÍDO")
-    output_dir = SCRIPT_DIR / "Municipios Prontos"
+    banner("CONCLUIDO")
+    output_dir = ROOT_DIR / "Municipios Prontos"
     generated = list(output_dir.glob("*.clas.abap")) if output_dir.exists() else []
     valids   = [f for f in generated if not f.name.endswith(".invalid")]
     invalids = [f for f in generated if f.name.endswith(".invalid")]
 
     print(f"  Arquivos gerados em: {output_dir}")
-    print(f"  Classes válidas:     {len(valids)}")
+    print(f"  Classes validas:     {len(valids)}")
     if invalids:
         print(f"  Para revisar (.invalid): {len(invalids)}")
         for f in invalids:
             print(f"    - {f.name}")
 
     if LISTA_MD.exists():
-        print(f"\n  Registro de municípios: {LISTA_MD}")
+        print(f"\n  Registro de municipios: {LISTA_MD}")
 
     if not deploy:
         print()
