@@ -213,11 +213,41 @@ Crie a classe ABAP para o município abaixo:
 """
 
 
-def clean_generated_code(raw: str) -> str:
-    """Remove blocos markdown do output do Claude."""
+def clean_generated_code(raw: str, city: str, uf: str) -> str:
+    """
+    Limpa o output do Claude:
+    - Remove blocos markdown (```abap ... ```)
+    - Remove qualquer texto antes de 'CLASS /s4tax/'
+    - Remove qualquer texto após 'ENDCLASS.'
+    - Garante o comentário '\" Cidade/UF' após CREATE PUBLIC.
+    """
+    # Remove markdown
     raw = re.sub(r"^```(?:abap)?\s*\n", "", raw.strip(), flags=re.MULTILINE)
     raw = re.sub(r"\n```\s*$", "", raw.strip(), flags=re.MULTILINE)
-    return raw.strip()
+
+    # Remove texto antes de CLASS /s4tax/
+    class_match = re.search(r'^CLASS /s4tax/', raw, re.MULTILINE)
+    if class_match:
+        raw = raw[class_match.start():]
+
+    # Remove texto após o ÚLTIMO ENDCLASS. (o que fecha a IMPLEMENTATION)
+    endclass_matches = list(re.finditer(r'^ENDCLASS\.', raw, re.MULTILINE))
+    if endclass_matches:
+        raw = raw[:endclass_matches[-1].end()]
+
+    raw = raw.strip()
+
+    # Insere comentário com cidade/UF após CREATE PUBLIC. se ainda não estiver
+    comment = f'" {city}/{uf.upper()}'
+    if comment not in raw:
+        raw = re.sub(
+            r'(CREATE PUBLIC\s*\.)',
+            r'\1\n' + comment,
+            raw,
+            count=1
+        )
+
+    return raw
 
 
 def validate(code: str, class_name: str, tax_address: str) -> list[str]:
@@ -228,8 +258,10 @@ def validate(code: str, class_name: str, tax_address: str) -> list[str]:
         errors.append("Falta herança de /s4tax/nfse_default")
     if tax_address not in code:
         errors.append(f"Falta constante tax_address '{tax_address}'")
-    if "ENDCLASS." not in code:
-        errors.append("Falta ENDCLASS.")
+    if "IMPLEMENTATION" not in code:
+        errors.append("Falta seção IMPLEMENTATION")
+    if code.count("ENDCLASS.") < 2:
+        errors.append("Falta ENDCLASS. da IMPLEMENTATION (esperados 2)")
     return errors
 
 
@@ -237,11 +269,8 @@ def validate(code: str, class_name: str, tax_address: str) -> list[str]:
 # Atualização de lista_prontos.md
 # ---------------------------------------------------------------------------
 
-def update_lista_prontos(city: str, uf: str, ibge_code: str, is_new: bool) -> None:
-    """
-    Adiciona ou atualiza entrada do município na tabela lista_prontos.md.
-    is_new=True: linha nova; is_new=False: atualiza coluna 'Ultima modificação'.
-    """
+def update_lista_prontos(city: str, uf: str, ibge_code: str) -> None:
+    """Adiciona ou atualiza entrada do município na tabela lista_prontos.md."""
     if not LISTA_MD.exists():
         print(f"  [AVISO] {LISTA_MD} não encontrado — não será atualizado.")
         return
@@ -341,7 +370,7 @@ def process_eft_file(
             city, uf, ibge_code, eft_text, architecture, claude_md, examples
         )
         raw_code = call_claude(prompt, timeout=180)
-        code = clean_generated_code(raw_code)
+        code = clean_generated_code(raw_code, city, uf)
     except Exception as e:
         result["error"] = f"Erro na chamada ao claude CLI: {e}"
         return result
@@ -364,7 +393,7 @@ def process_eft_file(
     print(f"  [OK] {out_filename}")
 
     # 7. Atualizar lista_prontos.md
-    update_lista_prontos(city, uf, ibge_code, is_new=True)
+    update_lista_prontos(city, uf, ibge_code)
 
     return result
 
