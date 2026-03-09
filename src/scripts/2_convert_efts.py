@@ -1,21 +1,26 @@
 """
 2_convert_efts.py
 Converte arquivos .pdf e .docx para .txt em "EFTs txt/".
+Após cada conversão, extrai também um JSON estruturado para "EFTs json/".
 Imagens são transcritas via claude CLI (sem API keys).
 
 Pastas de entrada:
   EFTs Novas PDF/   -> arquivos .pdf  (preferencial)
   EFTs Novas/       -> arquivos .docx (fallback)
 
-Pasta de saída:
-  EFTs txt/
+Pastas de saída:
+  EFTs txt/         -> transcrição completa em texto
+  EFTs json/        -> dados técnicos estruturados (para busca por IA)
 
 Uso:
-  python src/scripts/2_convert_efts.py [--only "NOME_ARQUIVO"] [--force]
-  --only: processa apenas o arquivo cujo nome contenha esse trecho
-  --force: reprocessa mesmo se .txt já existir
+  python src/scripts/2_convert_efts.py [--only "NOME_ARQUIVO"] [--force] [--skip-json]
+  --only:      processa apenas o arquivo cujo nome contenha esse trecho
+  --force:     reprocessa mesmo se .txt/.json já existirem
+  --skip-json: pula a extração de JSON (gera apenas o .txt)
 """
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -24,10 +29,11 @@ import unicodedata
 import zipfile
 from pathlib import Path
 
-ROOT_DIR       = Path(__file__).parent.parent.parent   # nfse-builder/
-INPUT_DIR_PDF  = ROOT_DIR / "EFTs Novas PDF"
-INPUT_DIR_DOCX = ROOT_DIR / "EFTs Novas"
-OUTPUT_DIR     = ROOT_DIR / "EFTs txt"
+ROOT_DIR        = Path(__file__).parent.parent.parent   # nfse-builder/
+INPUT_DIR_PDF   = ROOT_DIR / "EFTs Novas PDF"
+INPUT_DIR_DOCX  = ROOT_DIR / "EFTs Novas"
+OUTPUT_TXT_DIR  = ROOT_DIR / "EFTs txt"
+OUTPUT_JSON_DIR = ROOT_DIR / "EFTs json"
 
 
 # ---------------------------------------------------------------------------
@@ -140,7 +146,6 @@ def _get_docx_images(docx_path: Path) -> dict:
     """Extrai imagens do .docx como {relationship_id: (bytes, ext)}."""
     images = {}
     with zipfile.ZipFile(docx_path, "r") as z:
-        # Carrega mapeamento rid -> arquivo de mídia
         import xml.etree.ElementTree as ET
         rels_path = "word/_rels/document.xml.rels"
         rid_to_media = {}
@@ -153,7 +158,6 @@ def _get_docx_images(docx_path: Path) -> dict:
                 if "media/" in target:
                     rid_to_media[rid] = "word/" + target.lstrip("/")
 
-        # Carrega bytes de cada imagem
         for rid, media_path in rid_to_media.items():
             if media_path in z.namelist():
                 ext = media_path.rsplit(".", 1)[-1].lower()
@@ -206,7 +210,6 @@ def convert_docx_to_text(docx_path: Path) -> str:
             if text.strip():
                 lines.append(text)
 
-    # Tabelas
     for table in doc.tables:
         rows_text = []
         for row in table.rows:
@@ -216,6 +219,126 @@ def convert_docx_to_text(docx_path: Path) -> str:
             lines.append("\n" + "\n".join(rows_text) + "\n")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# JSON extraction (estrutura técnica da EFT)
+# ---------------------------------------------------------------------------
+
+JSON_SCHEMA = """{
+  "tipo_documento": "EFT",
+  "cliente": null,
+  "projeto": null,
+  "municipio": null,
+  "estado": null,
+  "titulo_programa": null,
+  "versao_documento": null,
+  "data_documento": null,
+  "abrasf_versao": null,
+  "transacoes_sap": [],
+  "tabelas_sap": [],
+  "classes_tecnicas": [],
+  "campos_xml": [],
+  "regras_negocio": [],
+  "regras_tecnicas": [],
+  "regras_cancelamento": [],
+  "regras_competencia": [],
+  "formatos_dados": []
+}"""
+
+JSON_EXTRACTION_PROMPT_TEMPLATE = """Analise este documento de EFT (Especificação Funcional-Técnica) de NFS-e e extraia os dados técnicos estruturados.
+
+Regras obrigatórias:
+1. Extraia APENAS informações realmente presentes no documento
+2. Se um campo não existir, retorne null (para strings) ou [] (para listas)
+3. Preserve exatamente a grafia dos nomes técnicos encontrados
+4. Não invente dados nem faça suposições
+5. Retorne SOMENTE o JSON, sem texto antes ou depois, sem markdown
+
+Campos explicados:
+- tipo_documento: sempre "EFT"
+- cliente: nome do cliente/empresa contratante (ex: "COGNA")
+- projeto: nome do projeto (ex: "NFS-e")
+- municipio: nome do município da NFS-e
+- estado: sigla do estado (ex: "PR", "SP")
+- titulo_programa: título/nome do programa ou EFT
+- versao_documento: versão do documento (ex: "1.0", "2.3")
+- data_documento: data do documento (ex: "2024-01-15")
+- abrasf_versao: versão do padrão ABRASF (ex: "2.04", "2.02", "1.0")
+- transacoes_sap: lista de transações SAP mencionadas (ex: ["VF01", "VF02"])
+- tabelas_sap: lista de tabelas SAP mencionadas (ex: ["VBRK", "T001"])
+- classes_tecnicas: classes ABAP ou técnicas mencionadas
+- campos_xml: campos do XML de NFS-e mencionados (ex: ["InfDeclaracaoPrestacaoServico", "Tomador"])
+- regras_negocio: lista de regras de negócio relevantes (resumidas, uma por item)
+- regras_tecnicas: regras técnicas de implementação (uma por item)
+- regras_cancelamento: regras específicas de cancelamento de NFS-e
+- regras_competencia: regras de competência/período de apuração
+- formatos_dados: formatos especiais de dados mencionados (ex: "CNPJ sem pontuação", "data YYYYMMDD")
+
+Documento EFT:
+---
+{txt_content}
+---
+
+Retorne SOMENTE o JSON (sem markdown, sem explicação):"""
+
+
+def extract_json_from_txt(txt_content: str, stem: str, out_path: Path, timeout: int = 120) -> bool:
+    """
+    Chama o claude CLI para extrair o JSON estruturado do conteúdo TXT.
+    Salva em out_path. Retorna True se bem-sucedido.
+    """
+    # Limita tamanho para evitar prompts muito longos (mantém início + fim)
+    MAX_CHARS = 40000
+    if len(txt_content) > MAX_CHARS:
+        half = MAX_CHARS // 2
+        txt_trimmed = (
+            txt_content[:half]
+            + f"\n\n[... {len(txt_content) - MAX_CHARS} caracteres omitidos ...]\n\n"
+            + txt_content[-half:]
+        )
+    else:
+        txt_trimmed = txt_content
+
+    prompt = JSON_EXTRACTION_PROMPT_TEMPLATE.format(txt_content=txt_trimmed)
+
+    try:
+        raw = call_claude(prompt, timeout=timeout)
+    except Exception as e:
+        print(f"  [ERRO JSON] claude CLI: {e}")
+        return False
+
+    # Extrai JSON do output (remove eventuais blocos markdown)
+    raw = re.sub(r"^```(?:json)?\s*\n?", "", raw.strip(), flags=re.MULTILINE)
+    raw = re.sub(r"\n?```\s*$", "", raw.strip(), flags=re.MULTILINE)
+    raw = raw.strip()
+
+    # Tenta parsear para validar
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as e:
+        print(f"  [ERRO JSON] JSON inválido: {e}")
+        # Salva mesmo assim para inspeção
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.with_suffix(".json.invalid").write_text(raw, encoding="utf-8")
+        return False
+
+    # Garante que o municipio/estado vêm do nome do arquivo se ausentes
+    if not data.get("municipio") or not data.get("estado"):
+        # Tenta extrair do stem do arquivo: "COGNA_EFT - NFSe Toledo - PR"
+        m = re.search(r"NFSe?\s+(.+?)\s+-\s+([A-Z]{2})", stem, re.IGNORECASE)
+        if m:
+            if not data.get("municipio"):
+                data["municipio"] = m.group(1).strip()
+            if not data.get("estado"):
+                data["estado"] = m.group(2).upper()
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8"
+    )
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +366,7 @@ def collect_source_files(only) -> list:
         for f in INPUT_DIR_DOCX.glob("*.docx"):
             docx_files[normalize(f.stem)] = (f, "docx")
 
-    # Merge: PDF tem prioridade
     combined = {**docx_files, **pdf_files}
-
     files = list(combined.values())
     files.sort(key=lambda t: normalize(t[0].stem))
 
@@ -256,28 +377,50 @@ def collect_source_files(only) -> list:
     return files
 
 
-def process_file(src_path: Path, file_type: str, force: bool) -> bool:
-    """Converte um arquivo para .txt. Retorna True se bem-sucedido."""
-    out_path = OUTPUT_DIR / (src_path.stem + ".txt")
+def process_file(src_path: Path, file_type: str, force: bool, skip_json: bool) -> bool:
+    """
+    Converte um arquivo para .txt e opcionalmente extrai .json.
+    Retorna True se bem-sucedido.
+    """
+    out_txt  = OUTPUT_TXT_DIR  / (src_path.stem + ".txt")
+    out_json = OUTPUT_JSON_DIR / (src_path.stem + ".json")
 
-    if out_path.exists() and not force:
-        print(f"  [PULAR] {src_path.name} — .txt já existe. Use --force para reprocessar.")
-        return True
+    txt_already_existed = out_txt.exists()
 
-    print(f"  Convertendo ({file_type.upper()}): {src_path.name}")
-    try:
-        if file_type == "pdf":
-            content = convert_pdf_to_text(src_path)
+    # --- Conversão TXT ---
+    if txt_already_existed and not force:
+        print(f"  [PULAR TXT] {src_path.name} — .txt já existe.")
+        txt_ok = True
+    else:
+        print(f"  Convertendo ({file_type.upper()}): {src_path.name}")
+        try:
+            if file_type == "pdf":
+                content = convert_pdf_to_text(src_path)
+            else:
+                content = convert_docx_to_text(src_path)
+
+            OUTPUT_TXT_DIR.mkdir(parents=True, exist_ok=True)
+            out_txt.write_text(content, encoding="utf-8")
+            print(f"  [OK TXT] {out_txt.name}")
+            txt_ok = True
+        except Exception as e:
+            print(f"  [ERRO TXT] {src_path.name}: {e}")
+            txt_ok = False
+
+    # --- Extração JSON ---
+    if txt_ok and not skip_json:
+        json_already_existed = out_json.exists()
+        if json_already_existed and not force and txt_already_existed:
+            print(f"  [PULAR JSON] {out_json.name} — já existe.")
         else:
-            content = convert_docx_to_text(src_path)
+            print(f"  Extraindo JSON: {out_json.name} ...")
+            txt_content = out_txt.read_text(encoding="utf-8")
+            ok = extract_json_from_txt(txt_content, src_path.stem, out_json)
+            if ok:
+                print(f"  [OK JSON] {out_json.name}")
+            # Falha no JSON não bloqueia o pipeline (txt já foi salvo)
 
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(content, encoding="utf-8")
-        print(f"  [OK] Salvo: {out_path.name}")
-        return True
-    except Exception as e:
-        print(f"  [ERRO] {src_path.name}: {e}")
-        return False
+    return txt_ok
 
 
 # ---------------------------------------------------------------------------
@@ -285,17 +428,22 @@ def process_file(src_path: Path, file_type: str, force: bool) -> bool:
 # ---------------------------------------------------------------------------
 
 def main():
-    print("=== Etapa 2: Conversão EFT -> TXT ===\n")
+    print("=== Etapa 2: Conversão EFT -> TXT + JSON ===\n")
     print(f"  Entrada PDF:  {INPUT_DIR_PDF}")
     print(f"  Entrada DOCX: {INPUT_DIR_DOCX}")
-    print(f"  Saida:        {OUTPUT_DIR}\n")
+    print(f"  Saida TXT:    {OUTPUT_TXT_DIR}")
+    print(f"  Saida JSON:   {OUTPUT_JSON_DIR}\n")
 
-    force = "--force" in sys.argv
+    force     = "--force" in sys.argv
+    skip_json = "--skip-json" in sys.argv
     only = None
     if "--only" in sys.argv:
         idx = sys.argv.index("--only")
         if idx + 1 < len(sys.argv):
             only = sys.argv[idx + 1]
+
+    if skip_json:
+        print("  [AVISO] --skip-json ativo: JSON nao sera gerado.\n")
 
     files = collect_source_files(only)
 
@@ -315,13 +463,14 @@ def main():
     errors = 0
 
     for src_path, file_type in files:
-        ok = process_file(src_path, file_type, force)
+        ok = process_file(src_path, file_type, force, skip_json)
         if ok:
             success += 1
         else:
             errors += 1
+        print()
 
-    print(f"\nConcluido: {success} convertido(s), {errors} erro(s).")
+    print(f"Concluido: {success} convertido(s), {errors} erro(s).")
     if errors:
         sys.exit(1)
 

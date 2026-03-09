@@ -1,0 +1,49 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Hortolândia",
+  "estado": "SP",
+  "titulo_programa": "XML NFSe Prefeitura de Hortolândia/SP – 3519071",
+  "versao_documento": "1.0",
+  "data_documento": "24.02.2026",
+  "abrasf_versao": "2.03",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsNaturezaOperacao",
+    "tsRegimeEspecialTributacao"
+  ],
+  "regras_negocio": [
+    "Serie deve seguir cadastro SAP x Orbit",
+    "Tipo deve enviar valor fixo = 1",
+    "Regime tributação somente para MEI/Simples Nacional"
+  ],
+  "regras_tecnicas": [
+    "Validação das tags XML com layout da prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Seguir padrão de municípios que utilizam GINFES"
+  ],
+  "regras_competencia": [
+    "Formato AAAA-MM-DD"
+  ],
+  "formatos_dados": [
+    "Data AAAA-MM-DD",
+    "DataHora AAAA-MM-DDTHH:mm:ss",
+    "Decimal 0.00",
+    "Percentual 00.00"
+  ]
+}

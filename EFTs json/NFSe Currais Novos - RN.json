@@ -1,0 +1,44 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Currais Novos",
+  "estado": "RN",
+  "titulo_programa": "XML NFSe Prefeitura de Currais Novos/RN – 2403103",
+  "versao_documento": "1.0",
+  "data_documento": "24.02.2026",
+  "abrasf_versao": "2.03",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [],
+  "regras_negocio": [
+    "Serie segue cadastro SAP x Orbit",
+    "Tipo enviar valor fixo = 1"
+  ],
+  "regras_tecnicas": [
+    "Validação das tags XML com layout da prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Código baseado na tabela de erros e alertas"
+  ],
+  "regras_competencia": [
+    "Formato AAAA-MM-DD"
+  ],
+  "formatos_dados": [
+    "Data AAAA-MM-DD",
+    "DataHora AAAA-MM-DDTHH:mm:ss",
+    "Decimal 0.00",
+    "Percentual 00.00"
+  ]
+}
