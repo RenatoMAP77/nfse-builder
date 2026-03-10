@@ -1,3 +1,6 @@
+Pasta definida para as classes de municipio .abap geradas a partir das EFTs, seguindo o processo de automação descrito.
+
+
 Lista de municipios prontos, ou seja, aqueles que já tiveram suas classes .abap geradas a partir das EFTs, seguindo o processo de automação descrito.
 
 Em formato de tabela:
