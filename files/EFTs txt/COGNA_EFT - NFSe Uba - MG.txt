@@ -1,0 +1,107 @@
+ ÍNDICE
+1.	OBJETIVO	3
+2.	INFORMAÇÕES SOBRE PADRÕES, SUGESTÕES E REGRAS TÉCNICAS	3
+N/A	3
+PREMISSAS	3
+3.	TELA DE SELEÇÃO OU TELA DE PESQUISA	3
+4.	TELA DE MANUTENÇÃO E/OU ATUALIZAÇÃO DE DADOS	3
+5.	TABELAS DE BANCO DE DADOS	3
+6.	ESPECIFICAÇÃO DO DESENVOLVIMENTO	4
+OBJETIVO
+Mapeamento dos campos para Layout de XML referente à prefeitura de Ubá/MG.
+INFORMAÇÕES SOBRE PADRÕES, SUGESTÕES E REGRAS TÉCNICAS
+N/A
+PREMISSAS
+Validação das Tag´s de XML x Layout de modelo da Prefeitura
+TELA DE SELEÇÃO OU TELA DE PESQUISA
+N/A
+TELA DE MANUTENÇÃO E/OU ATUALIZAÇÃO DE DADOS
+Transação de usuário
+
+/S4TAX/NFSE_001
+/S4TAX/NFSE_002
+/S4TAX/NFSE_003
+TABELAS DE BANCO DE DADOS
+Objetos técnicos:
+
+Classes:
+/S4TAX/TNFSECLAS
+/S4TAX/TNFSE_IMP
+ESPECIFICAÇÃO DO DESENVOLVIMENTO
+Em consulta ao site da prefeitura de Ubá/MG, em integração NFS-e com a Prefeitura, foi verificado que é utilizado o padrão ABRASF na versão 2.04.
+Formatos e Padrões Utilizados:
+
+[IMAGEM 1 - erro: [WinError 2] O sistema não pode encontrar o arquivo especificado]
+
+
+[IMAGEM 2 - erro: [WinError 2] O sistema não pode encontrar o arquivo especificado]
+
+Serie:
+Seguir o que estiver cadastrado no SAP x Orbit
+Tipo:
+Enviar Fixo valor = 1
+
+[IMAGEM 3 - erro: [WinError 2] O sistema não pode encontrar o arquivo especificado]
+
+Exigibilidade ISS:
+
+[IMAGEM 4 - erro: [WinError 2] O sistema não pode encontrar o arquivo especificado]
+
+Regime Tributação:
+Atualmente possuímos a configuração para esse campo, no entanto deve ser preenchido somente em caso de MEI/Simples nacional o que não se aplica à maioria dos clientes Seidor.
+
+[IMAGEM 5 - erro: [WinError 2] O sistema não pode encontrar o arquivo especificado]
+
+Campos disponíveis na configuração da transação /S4TAX/NFSE_003 – Regime especial de tributação
+Competência:
+	Enviar no formato AAAA-MM-DD
+Cancelamento:
+Código de cancelamento com base na tabela de Erros e alertas.
+1 – Erro na emissão
+
+IDENTIFICAÇÃO | IDENTIFICAÇÃO | IDENTIFICAÇÃO
+PROCESSO | CÓDIGO | NOME
+PROCESSO | PGP | PROCESSO DE GERENCIAMENTO DE PROJETOS
+PRODUTO | EFT | ESPECIFICAÇÃO FUNCIONAL-TÉCNICA
+
+
+ACESSOS | ACESSOS
+PERFIL | PERMISSÕES
+Gerente Projetos | Ronaldo Figueiredo
+Consultor Funcional | Rodrigo Zaneti
+
+
+DADOS DO PROJETO | DADOS DO PROJETO
+Cliente | COGNA
+Código Projeto | COGNA_OUTBOUND
+Descrição Projeto | COGNA_OUTBOUND
+Gerente Projeto Seidor | Ronaldo Figueiredo
+Gerente Projeto Cliente | 
+Responsável Técnico | Alecio Silva
+
+
+DADOS DO PROGRAMA | DADOS DO PROGRAMA
+Título do Programa | XML NFSe Prefeitura de Ubá/MG - 3169901
+Código do Programa | 
+Transação | 
+Módulo / Área Funcional | 
+Pacote | 
+Complexidade | Baixa
+Tipo | 
+
+
+CONTROLE DE VERSÃO | CONTROLE DE VERSÃO | CONTROLE DE VERSÃO | CONTROLE DE VERSÃO
+VERSÃO | DATA | DESCRIÇÃO | RESPONSÁVEL
+1.0 | 24.02.2026 | Elaboração da Especificação | Rodrigo Zaneti
+ |  |  | 
+
+
+AMAZENAMENTO | AMAZENAMENTO
+Arquivo Eletrônico | 
+Localização | 
+
+
+VALIDAÇÕES E APROVAÇÕES | VALIDAÇÕES E APROVAÇÕES | VALIDAÇÕES E APROVAÇÕES | VALIDAÇÕES E APROVAÇÕES
+NOME - EMPRESA | CARGO | DATA | ASSINATURA
+ |  |  | 
+ |  |  | 

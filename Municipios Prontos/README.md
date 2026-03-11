@@ -1,1 +1,0 @@
-Pasta definida para as classes de municipio .abap geradas a partir das EFTs, seguindo o processo de automação descrito.
