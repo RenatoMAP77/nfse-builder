@@ -1,0 +1,45 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "AMERICANAS",
+  "projeto": "AMERICANAS_OUTBOUND",
+  "municipio": "PASSOS",
+  "estado": "MG",
+  "titulo_programa": "XML NFSe Prefeitura PASSOS - MG",
+  "versao_documento": "1.0",
+  "data_documento": "11/03/26",
+  "abrasf_versao": "2.04",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsRegimeEspecialTributacao"
+  ],
+  "regras_negocio": [
+    "Se não conter valor no standard enviar fixo NF para série",
+    "Tipo enviar fixo valor 1"
+  ],
+  "regras_tecnicas": [
+    "Validação das tags de XML com layout da prefeitura"
+  ],
+  "regras_cancelamento": [
+    "1 - Erro na emissão",
+    "2 - Serviço não prestado",
+    "3 - Erro de assinatura",
+    "4 - Duplicidade da nota",
+    "5 - Erro de processamento"
+  ],
+  "regras_competencia": [
+    "Formato AAAA-MM-DD"
+  ],
+  "formatos_dados": [
+    "AAAA-MM-DD"
+  ]
+}
