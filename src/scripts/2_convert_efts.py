@@ -65,14 +65,19 @@ def call_claude(prompt: str, timeout: int = 120) -> str:
 
 
 def call_claude_with_image(prompt: str, image_path: str, timeout: int = 60) -> str:
-    """Usa claude CLI para transcrever uma imagem."""
+    """Usa claude CLI para transcrever uma imagem via ferramenta Read."""
     if not shutil.which("claude"):
         raise RuntimeError(
             "claude CLI não encontrado no PATH. "
             "Execute: npm install -g @anthropic-ai/claude-code"
         )
+    full_prompt = (
+        f"{prompt}\n\n"
+        f"Use a ferramenta Read para ler o arquivo de imagem: {image_path}"
+    )
     result = subprocess.run(
-        ["claude", "--print", "-p", prompt, image_path],
+        ["claude", "--print", "--dangerously-skip-permissions", "--tools", "Read"],
+        input=full_prompt,
         env=_clean_env(),
         capture_output=True, text=True, encoding="utf-8", timeout=timeout
     )
@@ -83,7 +88,7 @@ def call_claude_with_image(prompt: str, image_path: str, timeout: int = 60) -> s
 
 IMAGE_PROMPT = (
     "Esta imagem faz parte de uma especificação funcional (EFT) de NFS-e brasileira. "
-    "Transcreva TODO o conteúdo visível para texto puro. "
+    "Use a ferramenta Read para ler o arquivo de imagem indicado abaixo e transcreva TODO o conteúdo visível para texto puro. "
     "Se for tabela, preserve colunas no formato ASCII. "
     "Se for texto ou tela de sistema, transcreva exatamente. "
     "Não adicione comentários — apenas o conteúdo."
