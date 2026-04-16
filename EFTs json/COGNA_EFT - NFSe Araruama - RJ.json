@@ -1,0 +1,56 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Araruama",
+  "estado": "RJ",
+  "titulo_programa": "XML NFSe Prefeitura de Araruama/RJ- 3300209",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-19",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "DPS/infDPS/prest",
+    "DPS/infDPS/prest/CPF",
+    "DPS/infDPS/prest/CNPJ",
+    "DPS/infDPS/prest/NIF",
+    "DPS/infDPS/prest/cNaoNIF",
+    "DPS/infDPS/prest/IM",
+    "DPS/infDPS/serv/cServ/cTribMun",
+    "DPS/infDPS/serv/cServ/cIntContrib",
+    "DPS/infDPS/tpEmit",
+    "DPS/infDPS/serie"
+  ],
+  "regras_negocio": [
+    "O município de Araruama/RJ utiliza provedor específico com padrão NACIONAL de NFS-e",
+    "O layout deve seguir o mesmo padrão de outras prefeituras já implementadas, como Rio de Janeiro/RJ",
+    "O grupo DPS/infDPS/prest somente aceita as tags CPF e CNPJ; NIF e cNaoNIF não são permitidos",
+    "A tag DPS/infDPS/prest/IM é obrigatória no ISS Digital, diferente do padrão nacional onde é opcional; deve ser informada sem o dígito verificador",
+    "A tag DPS/infDPS/serv/cServ/cTribMun deve ser informada com o Código do Serviço Especializado quando o município utilizar",
+    "A tag DPS/infDPS/serv/cServ/cIntContrib é utilizada para especificar o Código de Tributação Municipal no ISS Digital",
+    "A tag DPS/infDPS/tpEmit deve obrigatoriamente ser 1-Prestador",
+    "A tag DPS/infDPS/serie não pode ser 0 e não pode ser maior ou igual a 49990, pois são séries reservadas"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Seguir o mesmo padrão de envio utilizado para prefeituras com classe já desenvolvida (ex: Rio de Janeiro/RJ)",
+    "DPS/infDPS/prest aceita apenas CPF e CNPJ; não usar NIF ou cNaoNIF",
+    "DPS/infDPS/prest/IM obrigatório; informar inscrição mobiliária municipal sem dígito verificador",
+    "DPS/infDPS/serv/cServ/cIntContrib pode indicar código de tributação municipal quando cTribNac indicar Item da LC 116 com mais de um código associado na Prefeitura",
+    "DPS/infDPS/serie: valor deve ser diferente de 0 e menor que 49990"
+  ],
+  "regras_cancelamento": [],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Inscrição mobiliária municipal (IM) sem dígito verificador"
+  ]
+}

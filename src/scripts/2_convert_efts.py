@@ -18,6 +18,7 @@ Uso:
   --force:     reprocessa mesmo se .txt/.json já existirem
   --skip-json: pula a extração de JSON (gera apenas o .txt)
 """
+import difflib
 import json
 import os
 import re
@@ -34,6 +35,7 @@ INPUT_DIR_PDF   = ROOT_DIR / "EFTs Novas PDF"
 INPUT_DIR_DOCX  = ROOT_DIR / "EFTs Novas"
 OUTPUT_TXT_DIR  = ROOT_DIR / "EFTs txt"
 OUTPUT_JSON_DIR = ROOT_DIR / "EFTs json"
+IBGE_FILE       = ROOT_DIR / "ibge_codes.json"
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +340,12 @@ def extract_json_from_txt(txt_content: str, stem: str, out_path: Path, timeout: 
             if not data.get("estado"):
                 data["estado"] = m.group(2).upper()
 
+    # titulo_programa = nome da classe NFS-e (ex: /s4tax/nfse_rs4300406)
+    if data.get("municipio") and data.get("estado"):
+        class_name = _build_class_name(data["municipio"], data["estado"])
+        if class_name:
+            data["titulo_programa"] = class_name
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
         json.dumps(data, ensure_ascii=False, indent=2),
@@ -353,6 +361,45 @@ def extract_json_from_txt(txt_content: str, stem: str, out_path: Path, timeout: 
 def normalize(name: str) -> str:
     nfkd = unicodedata.normalize("NFKD", name)
     return "".join(c for c in nfkd if not unicodedata.combining(c)).lower().strip()
+
+
+# ---------------------------------------------------------------------------
+# IBGE lookup (para gerar titulo_programa = nome da classe NFS-e)
+# ---------------------------------------------------------------------------
+
+_ibge_data_cache = None
+
+def _load_ibge_data() -> dict:
+    global _ibge_data_cache
+    if _ibge_data_cache is None:
+        if IBGE_FILE.exists():
+            with open(IBGE_FILE, encoding="utf-8") as f:
+                _ibge_data_cache = json.load(f)
+        else:
+            _ibge_data_cache = {}
+    return _ibge_data_cache
+
+
+def _find_ibge_code(city: str, uf: str) -> str | None:
+    ibge_data = _load_ibge_data()
+    state_data = ibge_data.get(uf.upper(), {})
+    if not state_data:
+        return None
+    city_norm = normalize(city)
+    if city_norm in state_data:
+        return state_data[city_norm]
+    matches = difflib.get_close_matches(city_norm, list(state_data.keys()), n=1, cutoff=0.7)
+    if matches:
+        return state_data[matches[0]]
+    return None
+
+
+def _build_class_name(city: str, uf: str) -> str | None:
+    """Retorna o nome da classe NFS-e, ex: /s4tax/nfse_rs4300406, ou None se IBGE não achado."""
+    ibge_code = _find_ibge_code(city, uf)
+    if not ibge_code:
+        return None
+    return f"/s4tax/nfse_{uf.lower()}{ibge_code}"
 
 
 def collect_source_files(only) -> list:

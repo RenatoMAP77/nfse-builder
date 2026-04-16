@@ -1,0 +1,53 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "NFS-e",
+  "municipio": "Alfenas",
+  "estado": "MG",
+  "titulo_programa": "XML NFSe Prefeitura de Alfenas/MG– 3101607",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-19",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Padrão ABRASF utilizado na integração NFS-e com a Prefeitura de Alfenas/MG",
+    "Série: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo (tsTipoRps): enviar fixo valor = 1",
+    "Regime de tributação deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Código de cancelamento com base na tabela de Erros e alertas",
+    "Os códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Campos disponíveis na configuração da transação /S4TAX/NFSE_003 – Regime especial de tributação"
+  ],
+  "regras_cancelamento": [
+    "Código 1 – Erro na emissão",
+    "Código 2 – Serviço não prestado",
+    "Código 3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "Código 4 – Duplicidade da nota",
+    "Código 5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais (decimal): 0.00 sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais (decimal): 00.00 com 5 dígitos, ponto como separador decimal"
+  ]
+}
