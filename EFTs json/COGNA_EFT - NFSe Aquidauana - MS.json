@@ -1,0 +1,57 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Aquidauana",
+  "estado": "MS",
+  "titulo_programa": "/s4tax/nfse_ms5001102",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": "2.01",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Série deve seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo deve ser enviado com valor fixo = 1 (RPS)",
+    "Regime de tributação deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Campos de regime especial de tributação disponíveis na configuração da transação /S4TAX/NFSE_003",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Padrão ABRASF versão 2.01 utilizado pela prefeitura de Aquidauana/MS",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento com base na tabela de Erros e alertas",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: 0.00 sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais: 00.00 em forma fracionária com 5 dígitos",
+    "tsCodigoCancelamentoNfse: tipo C, tamanho 4",
+    "tsExigibilidadeIss: tipo N, tamanho 2",
+    "tsRegimeEspecialTributacao: tipo N, tamanho 2",
+    "tsTipoRps: tipo N, tamanho 1"
+  ]
+}

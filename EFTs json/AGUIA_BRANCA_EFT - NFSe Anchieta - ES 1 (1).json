@@ -1,0 +1,49 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "Aguia Branca",
+  "projeto": null,
+  "municipio": "Anchieta",
+  "estado": "ES",
+  "titulo_programa": "/s4tax/nfse_es3200409",
+  "versao_documento": "1.0",
+  "data_documento": "2026-04-20",
+  "abrasf_versao": "2.04",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps"
+  ],
+  "regras_negocio": [
+    "Serie: se não conter valor no standard, enviar fixo 'NF'",
+    "Tipo: enviar fixo valor = 1",
+    "tsTipoRps 1 = RPS, 2 = Nota Fiscal Conjugada (Mista), 3 = Cupom"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Padrão ABRASF 2.04 utilizado na integração NFS-e"
+  ],
+  "regras_cancelamento": [
+    "1 - Erro na emissão",
+    "2 - Serviço não prestado",
+    "3 - Erro de assinatura",
+    "4 - Duplicidade da nota",
+    "5 - Erro de processamento"
+  ],
+  "regras_competencia": [
+    "Enviar no formato AAAA-MM-DD"
+  ],
+  "formatos_dados": [
+    "Competência no formato AAAA-MM-DD"
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "NFS-e",
+  "municipio": "Ariquemes",
+  "estado": "RO",
+  "titulo_programa": "/s4tax/nfse_ro1100023",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsExigibilidadeIss",
+    "tsTipoRps",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Série deve seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo deve ser enviado com valor fixo = 1",
+    "Campo tsRegimeEspecialTributacao deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Utilizado padrão ABRASF próprio da prefeitura de Ariquemes/RO",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Código 1 – Erro na emissão",
+    "Código 2 – Serviço não prestado",
+    "Código 3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "Código 4 – Duplicidade da nota",
+    "Código 5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: 0.00 sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais: 00.00 com 5 dígitos, ponto como separador decimal"
+  ]
+}

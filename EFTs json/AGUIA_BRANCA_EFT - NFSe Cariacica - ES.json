@@ -1,0 +1,50 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "Aguia Branca",
+  "projeto": null,
+  "municipio": "Cariacica",
+  "estado": "ES",
+  "titulo_programa": "/s4tax/nfse_es3201308",
+  "versao_documento": "1.0",
+  "data_documento": "2026-04-20",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps"
+  ],
+  "regras_negocio": [
+    "Serie: se não conter valor no standard, enviar fixo '7'",
+    "Tipo: enviar fixo valor = 1",
+    "Códigos de cancelamento: 1 - Erro na emissão, 2 - Serviço não prestado, 3 - Erro de assinatura, 4 - Duplicidade da nota, 5 - Erro de processamento",
+    "Competência: enviar no formato AAAA-MM-DD"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Padrão ABRASF utilizado pela Prefeitura de Cariacica - ES"
+  ],
+  "regras_cancelamento": [
+    "1 - Erro na emissão",
+    "2 - Serviço não prestado",
+    "3 - Erro de assinatura",
+    "4 - Duplicidade da nota",
+    "5 - Erro de processamento"
+  ],
+  "regras_competencia": [
+    "Enviar no formato AAAA-MM-DD"
+  ],
+  "formatos_dados": [
+    "Competência no formato AAAA-MM-DD",
+    "Serie fixo '7' quando sem valor no standard",
+    "Tipo fixo '1'",
+    "tsTipoRps: 1 = RPS, 2 = Nota Fiscal Conjugada (Mista), 3 = Cupom"
+  ]
+}
