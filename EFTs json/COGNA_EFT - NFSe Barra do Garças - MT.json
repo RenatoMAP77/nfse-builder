@@ -1,0 +1,56 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Barra do Garças",
+  "estado": "MT",
+  "titulo_programa": "/s4tax/nfse_mt5101803",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-19",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "RPSTipo",
+    "dEmis",
+    "natOp",
+    "RegEspTrib",
+    "OptSN",
+    "IncCult",
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie deve seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo de RPS deve ser enviado com valor fixo = 1",
+    "RegEspTrib (Regime Especial de Tributação) deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML conforme layout de modelo da Prefeitura de Barra do Garças/MT",
+    "Documentação oficial da prefeitura não estava acessível; layout baseado em modelo XML obtido em outros sites contendo as principais tags ABRASF",
+    "Campos de Regime Especial de Tributação disponíveis na configuração da transação /S4TAX/NFSE_003"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento baseado na tabela de Erros e alertas",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "dEmis no formato YYYY-MM-DDTHH:MM:SS"
+  ]
+}

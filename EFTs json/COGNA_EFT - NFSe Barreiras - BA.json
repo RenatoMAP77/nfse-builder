@@ -1,0 +1,55 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Barreiras",
+  "estado": "BA",
+  "titulo_programa": "/s4tax/nfse_ba2903201",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": "2.04",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: enviar fixo valor = 1",
+    "Exigibilidade ISS: 1=Exigível, 2=Não Incidência, 3=Isenção, 4=Exportação, 5=Imunidade, 6=Exigibilidade Suspensa por Decisão Judicial, 7=Exigibilidade Suspensa por Processo Administrativo",
+    "Regime Tributação: preencher somente em caso de MEI/Simples Nacional",
+    "Regime especial configurável via transação /S4TAX/NFSE_003"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Padrão ABRASF 2.04 utilizado pela Prefeitura de Barreiras/BA",
+    "tsTipoRps: 1=RPS, 2=Nota Fiscal Conjugada (Mista), 3=Cupom",
+    "tsRegimeEspecialTributacao: 1=Microempresa municipal, 2=Estimativa, 3=Sociedade de profissionais, 4=Cooperativa, 5=MEI, 6=ME EPP"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento com base na tabela de Erros e alertas",
+    "1=Erro na emissão",
+    "2=Serviço não prestado",
+    "3=Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4=Duplicidade da nota",
+    "5=Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: formato 0.00, ponto como separador decimal, sem separador de milhar",
+    "Valores Percentuais: formato 00.00, valor percentual fracionário com 5 dígitos, ponto como separador decimal"
+  ]
+}
