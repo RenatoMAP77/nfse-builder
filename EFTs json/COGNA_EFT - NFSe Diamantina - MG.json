@@ -1,0 +1,54 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "NFS-e",
+  "municipio": "Diamantina",
+  "estado": "MG",
+  "titulo_programa": "/s4tax/nfse_mg3121605",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": "Própria",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: enviar fixo valor = 1",
+    "Exigibilidade ISS: código de natureza da operação (valores 1 a 7)",
+    "Regime Tributação: preencher somente em caso de MEI/Simples Nacional",
+    "Cancelamento: código de cancelamento com base na tabela de Erros e alertas",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Padrão ABRASF Própria utilizado pela Prefeitura de Diamantina/MG",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Campos disponíveis na configuração da transação /S4TAX/NFSE_003 – Regime especial de tributação"
+  ],
+  "regras_cancelamento": [
+    "Código 1 – Erro na emissão",
+    "Código 2 – Serviço não prestado",
+    "Código 3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "Código 4 – Duplicidade da nota",
+    "Código 5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais (decimal): 0.00 sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais (decimal): 00.00 com 5 dígitos, ponto como separador decimal"
+  ]
+}

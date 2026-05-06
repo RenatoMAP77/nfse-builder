@@ -1,0 +1,58 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "NFS-e",
+  "municipio": "Cruzeiro do Sul",
+  "estado": "AC",
+  "titulo_programa": "/s4tax/nfse_ac1200203",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-18",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Padrão ABRASF utilizado pela prefeitura de Cruzeiro do Sul/AC",
+    "Série: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: enviar fixo valor = 1",
+    "Regime de tributação deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Campos de regime especial de tributação disponíveis na configuração da transação /S4TAX/NFSE_003",
+    "Cancelamento: código de cancelamento com base na tabela de Erros e alertas",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "tsTipoRps: 1 = RPS, 2 = Nota Fiscal Conjugada (Mista), 3 = Cupom",
+    "tsExigibilidadeIss: 1 = Exigível, 2 = Não Incidência, 3 = Isenção, 4 = Exportação, 5 = Imunidade, 6 = Exigibilidade Suspensa por Decisão Judicial, 7 = Exigibilidade Suspensa por Processo Administrativo",
+    "tsRegimeEspecialTributacao: 1 = Microempresa municipal, 2 = Estimativa, 3 = Sociedade de profissionais, 4 = Cooperativa, 5 = MEI, 6 = ME EPP",
+    "tsCodigoCancelamentoNfse: 1 = Erro na emissão, 2 = Serviço não prestado, 3 = Erro de assinatura, 4 = Duplicidade da nota, 5 = Erro de processamento"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento com base na tabela de Erros e alertas",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais (decimal): 0.00, sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais (decimal): 00.00, valor percentual em forma fracionária com 5 dígitos, ponto como separador"
+  ]
+}
