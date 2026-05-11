@@ -52,3 +52,6 @@ Em formato de tabela:
 | Conselheiro Lafaiete - MG | 3118304 | 2026-05-07 | 2026-05-07 |
 | Mucuri - BA | 2922003 | 2026-05-07 | 2026-05-07 |
 | Cruz Alta - RS | 4306106 | 2026-05-07 | 2026-05-07 |
+| São Gonçalo do Amarante/CE | 2312403 | 2026-05-08 | 2026-05-08 |
+| Ribas do Rio Pardo - MS | 5007109 | 2026-05-08 | 2026-05-08 |
+| Una - BA | 2932507 | 2026-05-08 | 2026-05-08 |
