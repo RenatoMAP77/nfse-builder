@@ -1,0 +1,53 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "NFS-e",
+  "municipio": "Ibaiti",
+  "estado": "PR",
+  "titulo_programa": "/s4tax/nfse_pr4109708",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-26",
+  "abrasf_versao": "2.02",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsTipoRps",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Série deve seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo deve ser enviado com valor fixo = 1",
+    "Regime de Tributação deve ser preenchido somente em caso de MEI/Simples Nacional",
+    "Código de cancelamento baseado na tabela de Erros e alertas",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Padrão ABRASF 2.02 utilizado pela prefeitura de Ibaiti/PR",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Campos disponíveis na configuração da transação /S4TAX/NFSE_003 para Regime especial de tributação"
+  ],
+  "regras_cancelamento": [
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais (decimal): 0.00 sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais (decimal): 00.00 formato fracionário com 5 dígitos, ponto como separador"
+  ]
+}
