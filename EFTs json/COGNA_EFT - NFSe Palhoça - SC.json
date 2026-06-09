@@ -1,0 +1,56 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Palhoça",
+  "estado": "SC",
+  "titulo_programa": "/s4tax/nfse_sc4211900",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-23",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie: Seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: Enviar fixo valor = 1",
+    "Regime Tributação: Preencher somente em caso de MEI/Simples Nacional; não se aplica à maioria dos clientes Seidor",
+    "Cancelamento: Código de cancelamento com base na tabela de Erros e alertas",
+    "Exigibilidade ISS: Configurar conforme natureza da operação (1=Exigível, 2=Não Incidência, 3=Isenção, 4=Exportação, 5=Imunidade, 6=Suspensa por Decisão Judicial, 7=Suspensa por Processo Administrativo)"
+  ],
+  "regras_tecnicas": [
+    "Utiliza padrão ABRASF para integração com a Prefeitura de Palhoça/SC",
+    "Data no formato AAAA-MM-DD",
+    "Data/Hora no formato AAAA-MM-DDTHH:mm:ss",
+    "Valores decimais sem separador de milhar; ponto (.) como separador decimal (ex: 1234.56)",
+    "Valores percentuais no formato 00.00 em forma fracionária com 5 dígitos (ex: 25,5% = 25.5)",
+    "Regime especial de tributação configurável via transação /S4TAX/NFSE_003"
+  ],
+  "regras_cancelamento": [
+    "Código 1: Erro na emissão",
+    "Código 2: Serviço não prestado",
+    "Código 3: Erro de assinatura – uso restrito da Administração Tributária Municipal",
+    "Código 4: Duplicidade da nota",
+    "Código 5: Erro de processamento – uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais (decimal): formato 0.00, sem separador de milhar, ponto como separador decimal",
+    "Valores Percentuais (decimal): formato 00.00, valor percentual em forma fracionária com 5 dígitos"
+  ]
+}

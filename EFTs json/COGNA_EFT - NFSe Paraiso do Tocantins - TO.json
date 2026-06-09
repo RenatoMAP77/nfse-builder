@@ -1,0 +1,54 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Paraíso do Tocantins",
+  "estado": "TO",
+  "titulo_programa": "/s4tax/nfse_to1716109",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-26",
+  "abrasf_versao": "2.04",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsExigibilidadeIss",
+    "tsTipoRps",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Série: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo (tsTipoRps): enviar fixo valor = 1",
+    "Exigibilidade ISS (tsExigibilidadeIss): código da natureza da operação, valores 1 a 7",
+    "Regime de tributação (tsRegimeEspecialTributacao): preencher somente em caso de MEI/Simples Nacional, o que não se aplica à maioria dos clientes Seidor",
+    "Cancelamento: código de cancelamento com base na tabela de Erros e alertas, valores 1 a 5",
+    "Códigos 3 (Erro de assinatura) e 5 (Erro de processamento) de cancelamento são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Padrão de integração NFS-e: ABRASF 2.04",
+    "Premissa: validação das tags de XML x layout de modelo da Prefeitura",
+    "Campos de regime especial de tributação disponíveis na configuração da transação /S4TAX/NFSE_003"
+  ],
+  "regras_cancelamento": [
+    "Código 1: Erro na emissão",
+    "Código 2: Serviço não prestado",
+    "Código 3: Erro de assinatura — uso restrito da Administração Tributária Municipal",
+    "Código 4: Duplicidade da nota",
+    "Código 5: Erro de processamento — uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_competencia": null,
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: formato 0.00, sem separador de milhar, ponto como separador decimal (ex: 1234.56)",
+    "Valores Percentuais: formato 00.00, valor percentual fracionário com 5 dígitos, ponto como separador decimal (ex: 25.5 para 25,5%)"
+  ]
+}

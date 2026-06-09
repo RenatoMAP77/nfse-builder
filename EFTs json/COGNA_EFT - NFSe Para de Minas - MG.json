@@ -1,0 +1,53 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Para de Minas",
+  "estado": "MG",
+  "titulo_programa": "/s4tax/nfse_mg3147105",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-19",
+  "abrasf_versao": "2.02",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: enviar fixo valor = 1",
+    "Regime de Tributação: deve ser preenchido somente em caso de MEI/Simples Nacional, o que não se aplica à maioria dos clientes Seidor",
+    "Cancelamento: código de cancelamento com base na tabela de Erros e alertas"
+  ],
+  "regras_tecnicas": [
+    "Validação das Tags de XML x Layout de modelo da Prefeitura",
+    "Utilizar padrão ABRASF 2.02",
+    "Campos de regime especial de tributação disponíveis na configuração da transação /S4TAX/NFSE_003"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento (tsCodigoCancelamentoNfse) com base na tabela de Erros e alertas, tamanho 4",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: formato 0.00, ponto como separador decimal, sem separador de milhar (ex: 1234.56)",
+    "Valores Percentuais: formato 00.00, valor percentual em forma fracionária com 5 dígitos, ponto como separador decimal (ex: 25,5% = 25.5)"
+  ]
+}

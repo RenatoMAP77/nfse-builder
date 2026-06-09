@@ -1,14 +1,22 @@
 """
 3_generate_classes.py
-Gera arquivos .clas.abap para municípios usando o claude CLI local.
+Gera arquivos .clas.abap para municípios usando o claude CLI local e, por padrão,
+também a classe de teste ABAP Unit correspondente (.prog.abap), seguindo o padrão do
+repositório s4tax_tests (include /s4tax/nfse_{uf}{ibge}_t99).
+
 Lê os .txt de "EFTs txt/" (ou --efts-dir), busca o código IBGE em ibge_codes.json
 e chama o claude CLI para gerar o código ABAP.
 
+Saída (em "Municipios Prontos/"):
+  #s4tax#nfse_{uf}{ibge}.clas.abap          -> classe principal do município
+  #s4tax#nfse_{uf}{ibge}_t99.prog.abap      -> include de teste ABAP Unit (colar no Eclipse)
+
 Uso:
-  python src/scripts/3_generate_classes.py [--only "Cacador SC"] [--force] [--efts-dir CAMINHO]
-  --only: processa apenas o município/UF informado (ex: "Cacador SC")
-  --force: regera mesmo se o .clas.abap já existir
+  python src/scripts/3_generate_classes.py [--only "Cacador SC"] [--force] [--efts-dir CAMINHO] [--no-tests]
+  --only:     processa apenas o município/UF informado (ex: "Cacador SC")
+  --force:    regera mesmo se o .clas.abap (e/ou teste) já existir
   --efts-dir: pasta com os .txt de EFT (padrão: <raiz>/EFTs txt)
+  --no-tests: gera apenas a classe principal, sem a classe de teste
 
 Não requer nenhuma variável de ambiente — usa claude CLI local.
 """
@@ -32,11 +40,54 @@ NFSE_MD     = PROJECT_DIR / "nfse-municipios.md"
 CLAUDE_MD   = PROJECT_DIR / "CLAUDE.md"
 LISTA_MD    = ROOT_DIR / "Municipios Prontos" / "lista_prontos.md"
 
-# Exemplos few-shot preferidos (buscados dinamicamente no repo)
+# Exemplos few-shot da CLASSE PRINCIPAL (buscados dinamicamente no repo s4tax_nfse).
+# Escolhidos por serem concisos e cobrirem os dois padrões de herança:
+#   nfse_ba2922003 : herda /s4tax/nfse_default — serie IS INITIAL -> 'NF', tipo_rps '1', cancelamento
+#   nfse_to1712504 : herda /s4tax/nfse_nacional (padrão nacional) — apenas get_reasons_cancellation
 FEW_SHOT_PREFERRED = [
-    "#s4tax#nfse_rj3304557.clas.abap",
-    "#s4tax#nfse_ce2304400.clas.abap",
+    "#s4tax#nfse_ba2922003.clas.abap",
+    "#s4tax#nfse_to1712504.clas.abap",
 ]
+
+# Exemplos few-shot da CLASSE DE TESTE (buscados dinamicamente no repo s4tax_tests).
+#   nfse_es3200409_t99 : testa serie/tipo_rps (com e sem série) + todos os códigos de cancelamento
+#   nfse_ba2918407_t99 : teste mínimo (apenas tipo_rps fixo)
+TEST_FEW_SHOT_PREFERRED = [
+    "#s4tax#nfse_es3200409_t99.prog.abap",
+    "#s4tax#nfse_ba2918407_t99.prog.abap",
+]
+
+# API da classe base de testes /s4tax/nfse_default_test (resumo para o prompt).
+# Mantém a geração do teste alinhada aos helpers/membros realmente disponíveis.
+BASE_TEST_API = """A classe de teste DEVE herdar de `/s4tax/nfse_default_test` (classe base abstrata FOR TESTING).
+Membros de instância já disponíveis (herdados — NÃO declarar de novo):
+  - branch_info TYPE REF TO /s4tax/nfse_branch_info
+  - documents   TYPE REF TO /s4tax/nfse_documents
+  - doc         TYPE REF TO /s4tax/doc
+  - branch      TYPE REF TO /s4tax/branch
+  - extension_head / extension_item (para mexer em série, regime, natureza op. etc.)
+Membro de classe (CLASS-DATA) herdado:
+  - reporter TYPE REF TO /s4tax/ireporter
+
+Métodos auxiliares herdados (PROTECTED — chamar como me->metodo( )):
+  - mock_identificacao( )  : popula doc com série '001', docnum '0123456789', datas etc.
+  - mock_extension( )      : popula extension_head/item (regime 'T', natureza '2', item_lista '14.01' ...)
+  - mock_servico( )        : popula impostos/serviço do item_1
+  - mock_all( )            : identificacao + tomador + endereço + serviço + constr. civil
+  - mount_identificacao_expected( ) RETURNING /s4tax/s_nfse_identificacao : valores esperados padrão (série '001', tipo_rps '1', natureza '1' ...)
+Para forçar série/numero diretamente no doc:
+  - doc->set_series( iv_series = 'XX' )   " '' para simular série vazia
+  - doc->set_docnum( '0000123456' )
+
+Tipos úteis nos testes:
+  - /s4tax/s_nfse_identificacao   (campos: serie, tipo_rps, natureza_operacao, competencia, numero ...)
+  - /s4tax/s_nfse_cancel_fields   (campos: code, motivo)
+  - /s4tax/s_nfse_servico
+
+Padrão de instanciação do objeto sob teste (cut) — usar SEMPRE get_instance da classe base:
+  cut ?= /s4tax/nfse_default=>get_instance( branch_info = me->branch_info documents = me->documents reporter = reporter ).
+O nome da classe municipal é resolvido por /s4tax/tests_utils=>get_classname_by_data( cut ) e aplicado via
+me->branch_info->get_class( )->set_class( ... ) dentro de class_setup/setup."""
 
 # Regex para extrair (cidade, UF) do nome do arquivo EFT
 FILENAME_PATTERNS = [
@@ -121,9 +172,27 @@ def load_text_file(path: Path, label: str) -> str:
     return ""
 
 
-def find_repo_src():
-    candidates = list(PROJECT_DIR.glob("repositorios/orbitspot-s4tax_nfse-*/src"))
+def _find_repo_src(repo_name: str):
+    """
+    Localiza a pasta /src de um repositório clonado.
+    Procura primeiro no layout atual (repositorios/git_online/<repo>/src) e
+    cai para layouts antigos (repositorios/**/<repo>*/src) como fallback.
+    """
+    primary = PROJECT_DIR / "repositorios" / "git_online" / repo_name / "src"
+    if primary.exists():
+        return primary
+    candidates = sorted(PROJECT_DIR.glob(f"repositorios/**/{repo_name}*/src"))
     return candidates[0] if candidates else None
+
+
+def find_repo_src():
+    """Pasta src do repositório s4tax_nfse (classes municipais)."""
+    return _find_repo_src("s4tax_nfse")
+
+
+def find_tests_repo_src():
+    """Pasta src do repositório s4tax_tests (classes de teste municipais)."""
+    return _find_repo_src("s4tax_tests")
 
 
 def load_few_shot_examples(repo_src) -> str:
@@ -150,6 +219,34 @@ def load_few_shot_examples(repo_src) -> str:
 
     if not examples:
         print("  [AVISO] Nenhum exemplo .clas.abap encontrado no repositório.")
+
+    return "\n\n".join(examples[:2])
+
+
+def load_test_few_shot_examples(tests_repo_src) -> str:
+    """Carrega exemplos de classes de teste (.prog.abap) do repo s4tax_tests."""
+    if not tests_repo_src:
+        print("  [AVISO] Repositório de testes não encontrado — sem exemplos de teste.")
+        return ""
+
+    examples = []
+    for fname in TEST_FEW_SHOT_PREFERRED:
+        fpath = tests_repo_src / fname
+        if fpath.exists():
+            content = fpath.read_text(encoding="utf-8")
+            examples.append(f"### Exemplo de teste: {fname}\n```abap\n{content}\n```")
+
+    # Fallback: quaisquer testes municipais
+    if len(examples) < 2:
+        for fpath in sorted(tests_repo_src.glob("#s4tax#nfse_*_t99.prog.abap"))[:6]:
+            if fpath.name not in TEST_FEW_SHOT_PREFERRED:
+                content = fpath.read_text(encoding="utf-8")
+                examples.append(f"### Exemplo de teste: {fpath.name}\n```abap\n{content}\n```")
+            if len(examples) >= 2:
+                break
+
+    if not examples:
+        print("  [AVISO] Nenhum exemplo de teste .prog.abap encontrado no repositório.")
 
     return "\n\n".join(examples[:2])
 
@@ -201,13 +298,21 @@ Crie a classe ABAP para o município abaixo:
 
 ## Regras obrigatórias
 
-1. Herdar SEMPRE de `/s4tax/nfse_default`
+1. Herança:
+   - Por padrão, herdar de `/s4tax/nfse_default` (municípios com layout/padrão próprio).
+   - Se o EFT indicar claramente o **padrão NACIONAL** de NFS-e (ex.: modelo nacional/NFSe Nacional,
+     tags `DPS/infDPS`, ABRASF nacional), herdar de `/s4tax/nfse_nacional` e sobrescrever apenas o
+     que diverge do padrão nacional. Na dúvida, herdar de `/s4tax/nfse_default`.
 2. Declarar `CONSTANTS tax_address TYPE string VALUE '{tax_addr}'.`
 3. Sobrescrever APENAS os métodos que o EFT indica comportamento diferente
 4. Sempre chamar `super->método( )` primeiro em cada override (exceto `get_reasons_cancellation`)
 5. NUNCA usar inline declarations, VALUE #(), NEW #(), COND #() — compatibilidade ABAP < 7.40
 6. Sem prefixos húngaros em variáveis (sem lo_, lv_, lt_ etc.)
-7. `get_reasons_cancellation` é de interface: declarar como `/s4tax/infse_data~get_reasons_cancellation REDEFINITION`
+7. `get_reasons_cancellation` é de interface: declarar como `/s4tax/infse_data~get_reasons_cancellation REDEFINITION`.
+   Quando o EFT listar os códigos de cancelamento, mapear CADA código (normalmente 1..5) e o caso default,
+   preenchendo SEMPRE os DOIS campos do resultado: `result-code` (o código) E `result-motivo` (o texto).
+   O parâmetro de entrada é `reason_domain`. Exemplo de cada ramo:
+   `result-code = '1'. result-motivo = 'Erro na emissao'.`
 8. Retornar SOMENTE o código ABAP — sem markdown, sem texto antes ou depois
 9. Começar com `CLASS {class_name} DEFINITION` e terminar com `ENDCLASS.`
 """
@@ -254,8 +359,10 @@ def validate(code: str, class_name: str, tax_address: str) -> list:
     errors = []
     if f"CLASS {class_name} DEFINITION" not in code:
         errors.append(f"Falta 'CLASS {class_name} DEFINITION'")
-    if "INHERITING FROM /s4tax/nfse_default" not in code:
-        errors.append("Falta herança de /s4tax/nfse_default")
+    # Aceita herança de nfse_default (padrão próprio) ou nfse_nacional (padrão nacional)
+    if ("INHERITING FROM /s4tax/nfse_default" not in code
+            and "INHERITING FROM /s4tax/nfse_nacional" not in code):
+        errors.append("Falta herança de /s4tax/nfse_default ou /s4tax/nfse_nacional")
     if tax_address not in code:
         errors.append(f"Falta constante tax_address '{tax_address}'")
     if "IMPLEMENTATION" not in code:
@@ -263,6 +370,173 @@ def validate(code: str, class_name: str, tax_address: str) -> list:
     if code.count("ENDCLASS.") < 2:
         errors.append("Falta ENDCLASS. da IMPLEMENTATION (esperados 2)")
     return errors
+
+
+# ---------------------------------------------------------------------------
+# Geração da CLASSE DE TESTE (.prog.abap + .prog.xml)
+# ---------------------------------------------------------------------------
+
+def build_test_prompt(
+    city: str, uf: str, ibge_code: str,
+    class_name: str, class_code: str,
+    test_examples: str, eft_text: str,
+) -> str:
+    uf_upper   = uf.upper()
+    ltcl_name  = f"ltcl_nfse_{uf.lower()}{ibge_code}"
+    include    = f"{class_name}_t99"
+
+    return f"""Você é especialista em ABAP Unit criando a CLASSE DE TESTE de uma classe municipal NFS-e do pacote /S4TAX/NFSE.
+
+## Classe base de testes disponível
+
+{BASE_TEST_API}
+
+## Exemplos de classes de teste existentes (few-shot — siga EXATAMENTE este padrão)
+
+{test_examples}
+
+---
+
+## TAREFA
+
+Gerar o include de teste ABAP Unit para a classe municipal abaixo.
+
+- **Município:** {city} ({uf_upper}) — IBGE {ibge_code}
+- **Classe sob teste:** {class_name}
+- **Nome do include de teste:** {include}
+- **Nome da classe local de teste:** {ltcl_name}
+
+### Código da CLASSE PRINCIPAL que será testada (base para os testes)
+
+```abap
+{class_code}
+```
+
+### Especificação Funcional (EFT) — use para descrever as regras nas mensagens de assert
+
+{eft_text}
+
+---
+
+## Regras obrigatórias
+
+1. Comece o arquivo EXATAMENTE com o cabeçalho de include:
+   `*&---------------------------------------------------------------------*`
+   `*& Include {include}`
+   `*&---------------------------------------------------------------------*`
+2. Definir `CLASS {ltcl_name} DEFINITION ... FOR TESTING INHERITING FROM /s4tax/nfse_default_test DURATION SHORT RISK LEVEL HARMLESS.`
+3. Declarar `DATA: cut TYPE REF TO {class_name}.` na PRIVATE SECTION.
+4. Implementar `setup` (e `class_setup` quando usar o cache de nome) instanciando `cut` via
+   `cut ?= /s4tax/nfse_default=>get_instance( branch_info = me->branch_info documents = me->documents reporter = reporter )`
+   exatamente como nos exemplos.
+5. Criar UM método `FOR TESTING RAISING cx_static_check` para CADA comportamento que a classe principal
+   sobrescreve. Olhe o código da classe principal e cubra:
+   - `get_rps_identificacao`: se fixa `tipo_rps`, testar `tipo_rps`; se trata série (IS INITIAL -> valor),
+     testar os DOIS casos (série vazia e série preenchida via `doc->set_series`); se ajusta natureza_operacao
+     ou competência, testar também.
+   - `/s4tax/infse_data~get_reasons_cancellation`: testar cada código tratado (1..5) e o caso default,
+     conferindo `code` e/ou `motivo` conforme a implementação.
+   - Qualquer outro método redefinido (get_rps_servico, get_rps_tomador etc.).
+6. Use SOMENTE helpers/membros listados na "Classe base de testes" — não invente métodos.
+7. NUNCA usar inline declarations, VALUE #(), NEW #(), COND #() — compatibilidade ABAP < 7.40.
+   (Declare `DATA` no início do método e atribua separadamente; use `CREATE OBJECT`.)
+8. Sem prefixos húngaros em variáveis.
+9. Retornar SOMENTE o código ABAP — sem markdown, sem texto antes ou depois.
+10. Terminar com o `ENDCLASS.` da IMPLEMENTATION.
+"""
+
+
+def clean_generated_test(raw: str) -> str:
+    """Limpa o output do Claude para o include de teste."""
+    # Remove markdown
+    raw = re.sub(r"^```(?:abap)?\s*\n", "", raw.strip(), flags=re.MULTILINE)
+    raw = re.sub(r"\n```\s*$", "", raw.strip(), flags=re.MULTILINE)
+
+    # Remove texto antes do cabeçalho do include (*&) ou da definição da classe local
+    header_match = re.search(r'^\*&-+\*', raw, re.MULTILINE)
+    class_match  = re.search(r'^CLASS\s+ltcl_', raw, re.MULTILINE | re.IGNORECASE)
+    start = None
+    if header_match:
+        start = header_match.start()
+    elif class_match:
+        start = class_match.start()
+    if start is not None:
+        raw = raw[start:]
+
+    # Remove texto após o ÚLTIMO ENDCLASS.
+    endclass_matches = list(re.finditer(r'^ENDCLASS\.', raw, re.MULTILINE))
+    if endclass_matches:
+        raw = raw[:endclass_matches[-1].end()]
+
+    return raw.strip()
+
+
+def validate_test(code: str, class_name: str, ltcl_name: str) -> list:
+    errors = []
+    if f"CLASS {ltcl_name} DEFINITION" not in code:
+        errors.append(f"Falta 'CLASS {ltcl_name} DEFINITION'")
+    if "FOR TESTING" not in code:
+        errors.append("Falta 'FOR TESTING'")
+    if "INHERITING FROM /s4tax/nfse_default_test" not in code:
+        errors.append("Falta herança de /s4tax/nfse_default_test")
+    if f"TYPE REF TO {class_name}" not in code:
+        errors.append(f"Falta declaração 'cut TYPE REF TO {class_name}'")
+    if "FOR TESTING" in code and "cl_abap_unit_assert" not in code:
+        errors.append("Nenhuma asserção cl_abap_unit_assert encontrada")
+    if code.count("ENDCLASS.") < 2:
+        errors.append("Falta ENDCLASS. da IMPLEMENTATION (esperados 2)")
+    return errors
+
+
+def generate_test_class(
+    city: str, uf: str, ibge_code: str,
+    class_name: str, class_code: str,
+    test_examples: str, eft_text: str,
+    force: bool,
+) -> dict:
+    """Gera o include de teste (.prog.abap + .prog.xml). Retorna dict com status."""
+    uf_lower    = uf.lower()
+    ltcl_name   = f"ltcl_nfse_{uf_lower}{ibge_code}"
+    base_file   = f"#s4tax#nfse_{uf_lower}{ibge_code}_t99"
+    abap_path   = OUTPUT_DIR / f"{base_file}.prog.abap"
+
+    result = {"status": "error", "output_file": None, "error": None}
+
+    if abap_path.exists() and not force:
+        print(f"  [PULAR] {abap_path.name} já existe. Use --force para regenerar.")
+        result["status"] = "skipped"
+        result["output_file"] = str(abap_path)
+        return result
+
+    print(f"  Gerando teste: {abap_path.name} (claude CLI) ...")
+    try:
+        prompt = build_test_prompt(
+            city, uf, ibge_code, class_name, class_code, test_examples, eft_text
+        )
+        raw = call_claude(prompt, timeout=180)
+        code = clean_generated_test(raw)
+    except Exception as e:
+        result["error"] = f"Erro na chamada ao claude CLI (teste): {e}"
+        return result
+
+    errors = validate_test(code, class_name, ltcl_name)
+    if errors:
+        invalid_path = OUTPUT_DIR / (abap_path.name + ".invalid")
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        invalid_path.write_text(code, encoding="utf-8")
+        result["error"] = (
+            f"Validação do teste falhou: {'; '.join(errors)}\n"
+            f"  Código salvo em: {invalid_path.name} (revisar manualmente)"
+        )
+        return result
+
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    abap_path.write_text(code, encoding="utf-8")
+
+    result["status"] = "created"
+    result["output_file"] = str(abap_path)
+    print(f"  [OK] {abap_path.name}")
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -312,9 +586,11 @@ def process_eft_file(
     architecture: str,
     claude_md: str,
     examples: str,
+    test_examples: str,
     force: bool,
+    gen_tests: bool = True,
 ) -> dict:
-    """Processa um .txt de EFT e gera o .clas.abap correspondente."""
+    """Processa um .txt de EFT e gera o .clas.abap (+ classe de teste) correspondente."""
     result = {
         "file": txt_path.name,
         "status": "error",
@@ -323,6 +599,9 @@ def process_eft_file(
         "ibge_code": None,
         "output_file": None,
         "error": None,
+        "test_status": "skipped",
+        "test_file": None,
+        "test_error": None,
     }
 
     # 1. Parsear município + UF do nome do arquivo
@@ -353,16 +632,27 @@ def process_eft_file(
     out_filename = f"#s4tax#nfse_{uf_lower}{ibge_code}.clas.abap"
     out_path = OUTPUT_DIR / out_filename
 
+    eft_text = txt_path.read_text(encoding="utf-8")
+    class_name  = f"/s4tax/nfse_{uf_lower}{ibge_code}"
+    tax_address = f"{uf.upper()} {ibge_code}"
+
     if out_path.exists() and not force:
         print(f"  [PULAR] {out_filename} já existe. Use --force para regenerar.")
         result["status"] = "skipped"
         result["output_file"] = str(out_path)
+        # Mesmo com a classe já existente, gera o teste se ainda não houver
+        if gen_tests:
+            existing_code = out_path.read_text(encoding="utf-8")
+            test_res = generate_test_class(
+                city, uf, ibge_code, class_name, existing_code,
+                test_examples, eft_text, force
+            )
+            result["test_status"] = test_res["status"]
+            result["test_file"]   = test_res["output_file"]
+            result["test_error"]  = test_res["error"]
         return result
 
     # 4. Gerar classe via claude CLI
-    eft_text = txt_path.read_text(encoding="utf-8")
-    class_name  = f"/s4tax/nfse_{uf_lower}{ibge_code}"
-    tax_address = f"{uf.upper()} {ibge_code}"
 
     print(f"  Gerando: {out_filename} (claude CLI) ...")
     try:
@@ -394,6 +684,18 @@ def process_eft_file(
 
     # 7. Atualizar lista_prontos.md
     update_lista_prontos(city, uf, ibge_code)
+
+    # 8. Gerar a classe de teste correspondente
+    if gen_tests:
+        test_res = generate_test_class(
+            city, uf, ibge_code, class_name, code,
+            test_examples, eft_text, force
+        )
+        result["test_status"] = test_res["status"]
+        result["test_file"]   = test_res["output_file"]
+        result["test_error"]  = test_res["error"]
+        if test_res["error"]:
+            print(f"  [ERRO-TESTE] {test_res['error']}")
 
     return result
 
@@ -430,6 +732,7 @@ def main():
         sys.exit(1)
 
     force = "--force" in sys.argv
+    gen_tests = "--no-tests" not in sys.argv   # por padrão gera a classe de teste também
     only = None
     if "--only" in sys.argv:
         idx = sys.argv.index("--only")
@@ -438,13 +741,19 @@ def main():
 
     # Carregamento de contexto
     print("Carregando contexto (arquitetura, CLAUDE.md, exemplos)...")
-    architecture = load_text_file(NFSE_MD, "nfse-municipios.md")
-    claude_md    = load_text_file(CLAUDE_MD, "CLAUDE.md")
-    repo_src     = find_repo_src()
-    examples     = load_few_shot_examples(repo_src)
-    print(f"  Arquitetura: {'OK' if architecture else 'NAO ENCONTRADO'}")
-    print(f"  CLAUDE.md:   {'OK' if claude_md else 'NAO ENCONTRADO'}")
-    print(f"  Exemplos:    {len([e for e in [examples] if e])} carregados")
+    architecture  = load_text_file(NFSE_MD, "nfse-municipios.md")
+    claude_md     = load_text_file(CLAUDE_MD, "CLAUDE.md")
+    repo_src      = find_repo_src()
+    examples      = load_few_shot_examples(repo_src)
+    tests_repo    = find_tests_repo_src()
+    test_examples = load_test_few_shot_examples(tests_repo) if gen_tests else ""
+    print(f"  Arquitetura:      {'OK' if architecture else 'NAO ENCONTRADO'}")
+    print(f"  CLAUDE.md:        {'OK' if claude_md else 'NAO ENCONTRADO'}")
+    print(f"  Exemplos classe:  {'OK' if examples else 'NENHUM'}")
+    if gen_tests:
+        print(f"  Exemplos teste:   {'OK' if test_examples else 'NENHUM'}")
+    else:
+        print(f"  Geração de teste: DESATIVADA (--no-tests)")
 
     # Dados IBGE
     with open(IBGE_FILE, encoding="utf-8") as f:
@@ -468,7 +777,10 @@ def main():
     results = []
     for txt_path in txt_files:
         print(f"-> {txt_path.name}")
-        r = process_eft_file(txt_path, ibge_data, architecture, claude_md, examples, force)
+        r = process_eft_file(
+            txt_path, ibge_data, architecture, claude_md,
+            examples, test_examples, force, gen_tests
+        )
         results.append(r)
         if r.get("error"):
             print(f"  [ERRO] {r['error']}")
@@ -479,24 +791,39 @@ def main():
     skipped = [r for r in results if r["status"] == "skipped"]
     errors  = [r for r in results if r["status"] == "error"]
 
+    tests_created = [r for r in results if r.get("test_status") == "created"]
+    tests_errors  = [r for r in results if r.get("test_error")]
+
     print("=" * 60)
     print(f"RELATORIO: {len(created)} criado(s) | {len(skipped)} pulado(s) | {len(errors)} erro(s)")
+    if gen_tests:
+        print(f"  TESTES:  {len(tests_created)} criado(s) | {len(tests_errors)} com erro")
     print("=" * 60)
 
     if created:
         print("\nCriados:")
         for r in created:
             print(f"  [OK] {r['city']} ({r['uf']}) -> {Path(r['output_file']).name}")
+            if r.get("test_status") == "created" and r.get("test_file"):
+                print(f"       + teste: {Path(r['test_file']).name}")
 
     if skipped:
         print("\nPulados (já existiam):")
         for r in skipped:
-            print(f"  [PULAR] {r['city']} ({r['uf']})")
+            extra = ""
+            if r.get("test_status") == "created" and r.get("test_file"):
+                extra = f" (teste gerado: {Path(r['test_file']).name})"
+            print(f"  [PULAR] {r['city']} ({r['uf']}){extra}")
 
     if errors:
         print("\nErros:")
         for r in errors:
             print(f"  [ERRO] {r['file']}: {r['error']}")
+
+    if tests_errors:
+        print("\nErros na geração de testes:")
+        for r in tests_errors:
+            print(f"  [ERRO-TESTE] {r['city']} ({r['uf']}): {r['test_error']}")
 
     if errors:
         sys.exit(1)
