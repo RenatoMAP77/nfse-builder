@@ -2,7 +2,7 @@
 
 Pipeline para criação automática de classes ABAP municipais do pacote `/S4TAX/NFSE`, partindo das especificações funcionais (EFTs) até os arquivos `.clas.abap` prontos para uso.
 
-**Toda geração de IA usa o `claude` CLI local — zero API keys necessárias.**
+**Toda geração de IA usa o `claude` CLI local por padrão, com suporte opcional ao `codex` CLI.**
 
 ---
 
@@ -10,14 +10,14 @@ Pipeline para criação automática de classes ABAP municipais do pacote `/S4TAX
 
 ```
 EFTs Novas PDF/*.pdf  ──┐
-EFTs Novas/*.docx     ──┤ (Etapa 2 — transcrição via claude CLI)
+EFTs Novas/*.docx     ──┤ (Etapa 2 — transcrição via CLI de IA)
                         │
                         ├──> EFTs txt/*.txt    (transcrição completa)
                         └──> EFTs json/*.json  (dados técnicos estruturados)
                                 │
          ibge_codes.json (Etapa 1 — scraping ibge.gov.br)
                                 │
-                                ▼ (Etapa 3 — geração ABAP via claude CLI)
+                                ▼ (Etapa 3 — geração ABAP via CLI de IA)
                  Municipios Prontos/#s4tax#nfse_{uf}{ibge}.clas.abap
                                 │
                                 ▼ (Etapa 4 — opcional, deploy direto ao SAP via ADT)
@@ -30,8 +30,8 @@ Acessa `https://www.ibge.gov.br/explica/codigos-dos-municipios.php` e salva todo
 ### Etapa 2 — Conversão EFT → TXT + JSON
 Lê arquivos de `EFTs Novas PDF/` (`.pdf`, preferencial) e `EFTs Novas/` (`.docx`, fallback). Para cada arquivo:
 
-1. **Transcrição TXT** — Extrai texto e transcreve imagens (tabelas de campos, regras de formato) via **claude CLI**. Salvo em `EFTs txt/`.
-2. **Extração JSON** — Chama o **claude CLI** para estruturar os dados técnicos da EFT em JSON. Salvo em `EFTs json/`.
+1. **Transcrição TXT** — Extrai texto e transcreve imagens via **Claude CLI ou Codex CLI**. Salvo em `EFTs txt/`.
+2. **Extração JSON** — Chama a CLI selecionada para estruturar os dados técnicos da EFT em JSON. Salvo em `EFTs json/`.
 
 > Se os `.txt` já existem em `EFTs txt/`, use `--use-existing-efts` para pular conversão e ir direto para a Etapa 3.
 
@@ -66,7 +66,7 @@ Os JSONs são gerados automaticamente junto ao TXT e ficam em `EFTs json/`. Use-
 Para cada `.txt` em `EFTs txt/`:
 - Extrai nome do município e UF do nome do arquivo
 - Busca o código IBGE no cache (com fallback de match fuzzy)
-- Chama o **claude CLI** com a EFT + arquitetura (`nfse-municipios.md`) + exemplos de classes existentes
+- Chama a CLI selecionada com a EFT + arquitetura (`nfse-municipios.md`) + exemplos de classes existentes
 - Gera o arquivo `.clas.abap` seguindo os padrões do projeto
 - Salva em `Municipios Prontos/`
 - Atualiza automaticamente a tabela em `Municipios Prontos/lista_prontos.md`
@@ -76,9 +76,9 @@ Envia os arquivos gerados diretamente ao SAP via API REST do ADT.
 
 ---
 
-## Pré-requisito único
+## Pré-requisitos
 
-**`claude` CLI instalado e autenticado:**
+Por padrão, use o **`claude` CLI instalado e autenticado**:
 
 ```bash
 npm install -g @anthropic-ai/claude-code
@@ -88,6 +88,14 @@ claude login
 Verificar se está funcionando:
 ```bash
 claude --version
+```
+
+Para executar com Codex, instale e autentique o **`codex` CLI**:
+
+```bash
+npm install -g @openai/codex
+codex login
+codex --version
 ```
 
 **Python 3.11+** com as dependências:
@@ -117,6 +125,18 @@ execute: python src/run_municipios.py --skip-ibge --use-existing-efts --only "To
 
 ```
 execute: python src/run_municipios.py --skip-ibge
+```
+
+### Executar todo o pipeline com Codex
+
+```
+execute: python src/run_municipios.py --skip-ibge --provider codex
+```
+
+### Selecionar um modelo da CLI escolhida
+
+```
+execute: python src/run_municipios.py --skip-ibge --provider codex --model NOME_DO_MODELO
 ```
 
 ### Forçar regeneração de classes já existentes
@@ -165,6 +185,8 @@ execute: python src/scripts/2_convert_efts.py --force --skip-json
 | `--deploy` | Executa também o deploy para SAP (Etapa 4) |
 | `--transport XXXX` | Número do transporte SAP para o deploy (padrão: `$TMP`) |
 | `--yes` | Pula confirmações interativas no deploy |
+| `--provider claude\|codex` | Seleciona a CLI de IA para todo o pipeline (padrão: `claude`) |
+| `--model NOME` | Passa um modelo opcional para a CLI selecionada |
 
 ## Opções de conversão (`src/scripts/2_convert_efts.py`)
 
@@ -173,6 +195,8 @@ execute: python src/scripts/2_convert_efts.py --force --skip-json
 | `--only "TRECHO"` | Processa apenas o arquivo cujo nome contenha esse trecho |
 | `--force` | Reprocessa mesmo se `.txt`/`.json` já existirem |
 | `--skip-json` | Gera apenas o `.txt`, sem extrair o `.json` |
+| `--provider claude\|codex` | Seleciona a CLI de IA (padrão: `claude`) |
+| `--model NOME` | Passa um modelo opcional para a CLI selecionada |
 
 ---
 
@@ -185,7 +209,7 @@ nfse-builder/
 │   └── scripts/
 │       ├── 1_scrape_ibge.py           # Etapa 1: scraping IBGE
 │       ├── 2_convert_efts.py          # Etapa 2: PDF/DOCX -> TXT + JSON
-│       ├── 3_generate_classes.py      # Etapa 3: geração ABAP via claude CLI
+│       ├── 3_generate_classes.py      # Etapa 3: geração ABAP via CLI de IA
 │       ├── 4_deploy_to_sap.py         # Etapa 4: deploy ao SAP via ADT
 │       └── _env.py                    # Gerenciador de credenciais SAP (para deploy)
 │

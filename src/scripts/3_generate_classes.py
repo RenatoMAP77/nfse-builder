@@ -1,35 +1,36 @@
 """
 3_generate_classes.py
-Gera arquivos .clas.abap para municípios usando o claude CLI local e, por padrão,
+Gera arquivos .clas.abap para municípios usando Claude CLI ou Codex CLI e, por padrão,
 também a classe de teste ABAP Unit correspondente (.prog.abap), seguindo o padrão do
 repositório s4tax_tests (include /s4tax/nfse_{uf}{ibge}_t99).
 
 Lê os .txt de "EFTs txt/" (ou --efts-dir), busca o código IBGE em ibge_codes.json
-e chama o claude CLI para gerar o código ABAP.
+e chama a CLI de IA selecionada para gerar o código ABAP.
 
 Saída (em "Municipios Prontos/"):
   #s4tax#nfse_{uf}{ibge}.clas.abap          -> classe principal do município
   #s4tax#nfse_{uf}{ibge}_t99.prog.abap      -> include de teste ABAP Unit (colar no Eclipse)
 
 Uso:
-  python src/scripts/3_generate_classes.py [--only "Cacador SC"] [--force] [--efts-dir CAMINHO] [--no-tests]
+  python src/scripts/3_generate_classes.py [--only "Cacador SC"] [--force] [--efts-dir CAMINHO] [--no-tests] [--provider claude|codex] [--model NOME]
   --only:     processa apenas o município/UF informado (ex: "Cacador SC")
   --force:    regera mesmo se o .clas.abap (e/ou teste) já existir
   --efts-dir: pasta com os .txt de EFT (padrão: <raiz>/EFTs txt)
   --no-tests: gera apenas a classe principal, sem a classe de teste
+  --provider: CLI de IA usada (padrão: claude)
+  --model:    modelo opcional passado para a CLI selecionada
 
-Não requer nenhuma variável de ambiente — usa claude CLI local.
+Não requer nenhuma variável de ambiente de API — usa a CLI local selecionada.
 """
 import difflib
 import json
-import os
 import re
-import shutil
-import subprocess
 import sys
 import unicodedata
 from datetime import datetime
 from pathlib import Path
+
+from ai_cli import DEFAULT_PROVIDER, call_ai, check_provider, option_value, validate_provider
 
 ROOT_DIR    = Path(__file__).parent.parent.parent   # nfse-builder/
 PROJECT_DIR = ROOT_DIR.parent.parent                # claude_abap/
@@ -39,6 +40,8 @@ IBGE_FILE   = ROOT_DIR / "ibge_codes.json"
 NFSE_MD     = PROJECT_DIR / "nfse-municipios.md"
 CLAUDE_MD   = PROJECT_DIR / "CLAUDE.md"
 LISTA_MD    = ROOT_DIR / "Municipios Prontos" / "lista_prontos.md"
+AI_PROVIDER = DEFAULT_PROVIDER
+AI_MODEL    = None
 
 # Exemplos few-shot da CLASSE PRINCIPAL (buscados dinamicamente no repo s4tax_nfse).
 # Escolhidos por serem concisos e cobrirem os dois padrões de herança:
@@ -97,28 +100,11 @@ FILENAME_PATTERNS = [
 
 
 # ---------------------------------------------------------------------------
-# Claude CLI helper
+# AI CLI helper
 # ---------------------------------------------------------------------------
 
-def call_claude(prompt: str, timeout: int = 180) -> str:
-    """Chama o claude CLI via stdin (evita limite de tamanho do argumento no Windows)."""
-    if not shutil.which("claude"):
-        raise RuntimeError(
-            "claude CLI não encontrado no PATH. "
-            "Execute: npm install -g @anthropic-ai/claude-code"
-        )
-    # Remove CLAUDECODE para permitir chamada aninhada a partir do Claude Code
-    env = os.environ.copy()
-    env.pop("CLAUDECODE", None)
-    result = subprocess.run(
-        ["claude", "--print"],
-        input=prompt,
-        env=env,
-        capture_output=True, text=True, encoding="utf-8", timeout=timeout
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"claude CLI erro: {result.stderr[:500]}")
-    return result.stdout.strip()
+def call_provider(prompt: str, timeout: int = 180) -> str:
+    return call_ai(prompt, provider=AI_PROVIDER, model=AI_MODEL, timeout=timeout)
 
 
 # ---------------------------------------------------------------------------
@@ -508,15 +494,15 @@ def generate_test_class(
         result["output_file"] = str(abap_path)
         return result
 
-    print(f"  Gerando teste: {abap_path.name} (claude CLI) ...")
+    print(f"  Gerando teste: {abap_path.name} ({AI_PROVIDER} CLI) ...")
     try:
         prompt = build_test_prompt(
             city, uf, ibge_code, class_name, class_code, test_examples, eft_text
         )
-        raw = call_claude(prompt, timeout=180)
+        raw = call_provider(prompt, timeout=180)
         code = clean_generated_test(raw)
     except Exception as e:
-        result["error"] = f"Erro na chamada ao claude CLI (teste): {e}"
+        result["error"] = f"Erro na chamada ao {AI_PROVIDER} CLI (teste): {e}"
         return result
 
     errors = validate_test(code, class_name, ltcl_name)
@@ -652,17 +638,17 @@ def process_eft_file(
             result["test_error"]  = test_res["error"]
         return result
 
-    # 4. Gerar classe via claude CLI
+    # 4. Gerar classe via CLI de IA selecionada
 
-    print(f"  Gerando: {out_filename} (claude CLI) ...")
+    print(f"  Gerando: {out_filename} ({AI_PROVIDER} CLI) ...")
     try:
         prompt = build_generation_prompt(
             city, uf, ibge_code, eft_text, architecture, claude_md, examples
         )
-        raw_code = call_claude(prompt, timeout=180)
+        raw_code = call_provider(prompt, timeout=180)
         code = clean_generated_code(raw_code, city, uf)
     except Exception as e:
-        result["error"] = f"Erro na chamada ao claude CLI: {e}"
+        result["error"] = f"Erro na chamada ao {AI_PROVIDER} CLI: {e}"
         return result
 
     # 5. Validar
@@ -705,12 +691,19 @@ def process_eft_file(
 # ---------------------------------------------------------------------------
 
 def main():
+    global AI_PROVIDER, AI_MODEL
+
     print("=== Etapa 3: Geração de Classes ABAP ===\n")
 
-    if not shutil.which("claude"):
-        print("ERRO: claude CLI não encontrado.")
-        print("  Instale com: npm install -g @anthropic-ai/claude-code")
+    try:
+        AI_PROVIDER = validate_provider(option_value(sys.argv, "--provider", DEFAULT_PROVIDER))
+        AI_MODEL = option_value(sys.argv, "--model")
+        version = check_provider(AI_PROVIDER)
+    except (ValueError, RuntimeError) as e:
+        print(f"ERRO: {e}")
         sys.exit(1)
+    print(f"  Provedor IA: {AI_PROVIDER} ({version})")
+    print(f"  Modelo:      {AI_MODEL or 'padrao da CLI'}")
 
     # Diretório dos .txt (pode ser sobrescrito via --efts-dir)
     input_dir = ROOT_DIR / "EFTs txt"

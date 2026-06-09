@@ -3,8 +3,8 @@ run_municipios.py — Orquestrador do pipeline de criação de classes municipai
 
 Pipeline:
   1. Scraping IBGE      -> ibge_codes.json
-  2. Conversão EFT->TXT  -> "EFTs txt/"  (PDF/DOCX via claude CLI)
-  3. Geração ABAP       -> "Municipios Prontos/"  (via claude CLI)
+  2. Conversão EFT->TXT  -> "EFTs txt/"  (PDF/DOCX via CLI de IA)
+  3. Geração ABAP       -> "Municipios Prontos/"  (via CLI de IA)
 
 Uso:
   python src/run_municipios.py [opções]
@@ -20,22 +20,26 @@ Opções:
   --deploy              Executa também deploy SAP (chama 4_deploy_to_sap.py se existir)
   --transport XXX       Número do transporte SAP (padrão: $TMP)
   --yes                 Pula confirmações no deploy
+  --provider NOME       CLI de IA: claude (padrão) ou codex
+  --model NOME          Modelo opcional passado para a CLI selecionada
 
-Não requer variáveis de ambiente — toda IA usa o claude CLI local.
-Certifique-se de que 'claude' está no PATH: npm install -g @anthropic-ai/claude-code
+Não requer variáveis de ambiente de API — toda IA usa a CLI local selecionada.
 """
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 SRC_DIR  = Path(__file__).parent          # nfse-builder/src/
 ROOT_DIR = SRC_DIR.parent                 # nfse-builder/
+SCRIPTS_DIR = SRC_DIR / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
-STEP1 = SRC_DIR / "scripts" / "1_scrape_ibge.py"
-STEP2 = SRC_DIR / "scripts" / "2_convert_efts.py"
-STEP3 = SRC_DIR / "scripts" / "3_generate_classes.py"
-STEP4 = SRC_DIR / "scripts" / "4_deploy_to_sap.py"
+from ai_cli import DEFAULT_PROVIDER, check_provider, option_value, validate_provider
+
+STEP1 = SCRIPTS_DIR / "1_scrape_ibge.py"
+STEP2 = SCRIPTS_DIR / "2_convert_efts.py"
+STEP3 = SCRIPTS_DIR / "3_generate_classes.py"
+STEP4 = SCRIPTS_DIR / "4_deploy_to_sap.py"
 
 # Pasta com .txt já prontos (pré-convertidos)
 PREBUILT_EFTS_DIR = ROOT_DIR / "EFTs txt"
@@ -46,18 +50,13 @@ LISTA_MD = ROOT_DIR / "Municipios Prontos" / "lista_prontos.md"
 # Verificação de pré-requisitos
 # ---------------------------------------------------------------------------
 
-def check_prerequisites():
-    if not shutil.which("claude"):
-        print("ERRO: 'claude' CLI não encontrado.")
-        print("  Instale com: npm install -g @anthropic-ai/claude-code")
+def check_prerequisites(provider):
+    try:
+        version = check_provider(provider)
+    except RuntimeError as e:
+        print(f"ERRO: {e}")
         sys.exit(1)
-    result = subprocess.run(
-        ["claude", "--version"], capture_output=True, text=True, timeout=10
-    )
-    if result.returncode != 0:
-        print("ERRO: claude CLI instalado mas não funcionando corretamente.")
-        sys.exit(1)
-    print(f"  claude CLI: OK ({result.stdout.strip()})")
+    print(f"  {provider} CLI: OK ({version})")
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +124,13 @@ def run_step(label, script, extra_args, dry_run):
 def main():
     args = sys.argv[1:]
 
+    try:
+        provider = validate_provider(option_value(args, "--provider", DEFAULT_PROVIDER))
+        model = option_value(args, "--model")
+    except ValueError as e:
+        print(f"ERRO: {e}")
+        sys.exit(1)
+
     skip_ibge    = "--skip-ibge" in args
     skip_convert = "--skip-convert" in args or "--use-existing-efts" in args
     dry_run      = "--dry-run" in args
@@ -150,16 +156,17 @@ def main():
     print("=" * 60)
     print(f"  Base:  {ROOT_DIR}")
     print(f"  Saida: {ROOT_DIR / 'Municipios Prontos'}")
+    print(f"  IA:    {provider} / {model or 'modelo padrao da CLI'}")
     if only:
         print(f"  Filtro: '{only}' apenas")
     if dry_run:
         print("  MODO: DRY-RUN (nenhuma ação executada)")
     print()
 
-    # Verificar claude CLI
+    # Verificar CLI de IA selecionada
     if not dry_run:
         print("Verificando pré-requisitos...")
-        check_prerequisites()
+        check_prerequisites(provider)
         print()
 
     # Resolver pasta dos TXTs
@@ -187,12 +194,14 @@ def main():
     # Etapa 2: Conversão EFT -> TXT
     # -----------------------------------------------------------------------
     if not skip_convert:
-        conv_args = []
+        conv_args = ["--provider", provider]
+        if model:
+            conv_args += ["--model", model]
         if only:
             conv_args += ["--only", only]
         if force:
             conv_args.append("--force")
-        ok = run_step("ETAPA 2: Conversão EFT -> TXT (claude CLI)", STEP2, conv_args, dry_run)
+        ok = run_step(f"ETAPA 2: Conversão EFT -> TXT ({provider} CLI)", STEP2, conv_args, dry_run)
         if not ok:
             print("\nPipeline abortado na etapa 2.")
             sys.exit(1)
@@ -203,15 +212,17 @@ def main():
         print(f"\n[PULAR] Etapa 2: {efts_desc}.")
 
     # -----------------------------------------------------------------------
-    # Etapa 3: Geração das classes ABAP via claude CLI
+    # Etapa 3: Geração das classes ABAP via CLI de IA
     # -----------------------------------------------------------------------
-    gen_args = ["--efts-dir", str(efts_dir)]
+    gen_args = ["--efts-dir", str(efts_dir), "--provider", provider]
+    if model:
+        gen_args += ["--model", model]
     if only:
         gen_args += ["--only", only]
     if force:
         gen_args.append("--force")
 
-    ok = run_step("ETAPA 3: Geração de classes ABAP (claude CLI)", STEP3, gen_args, dry_run)
+    ok = run_step(f"ETAPA 3: Geração de classes ABAP ({provider} CLI)", STEP3, gen_args, dry_run)
     if not ok:
         print("\nPipeline abortado na etapa 3.")
         sys.exit(1)

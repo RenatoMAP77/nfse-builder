@@ -2,7 +2,7 @@
 2_convert_efts.py
 Converte arquivos .pdf e .docx para .txt em "EFTs txt/".
 Após cada conversão, extrai também um JSON estruturado para "EFTs json/".
-Imagens são transcritas via claude CLI (sem API keys).
+Imagens são transcritas via Claude CLI ou Codex CLI.
 
 Pastas de entrada:
   EFTs Novas PDF/   -> arquivos .pdf  (preferencial)
@@ -13,22 +13,23 @@ Pastas de saída:
   EFTs json/        -> dados técnicos estruturados (para busca por IA)
 
 Uso:
-  python src/scripts/2_convert_efts.py [--only "NOME_ARQUIVO"] [--force] [--skip-json]
+  python src/scripts/2_convert_efts.py [--only "NOME_ARQUIVO"] [--force] [--skip-json] [--provider claude|codex] [--model NOME]
   --only:      processa apenas o arquivo cujo nome contenha esse trecho
   --force:     reprocessa mesmo se .txt/.json já existirem
   --skip-json: pula a extração de JSON (gera apenas o .txt)
+  --provider:  CLI de IA usada (padrão: claude)
+  --model:     modelo opcional passado para a CLI selecionada
 """
 import difflib
 import json
-import os
 import re
-import shutil
-import subprocess
 import sys
 import tempfile
 import unicodedata
 import zipfile
 from pathlib import Path
+
+from ai_cli import DEFAULT_PROVIDER, call_ai, check_provider, option_value, validate_provider
 
 ROOT_DIR        = Path(__file__).parent.parent.parent   # nfse-builder/
 INPUT_DIR_PDF   = ROOT_DIR / "EFTs Novas PDF"
@@ -36,56 +37,19 @@ INPUT_DIR_DOCX  = ROOT_DIR / "EFTs Novas"
 OUTPUT_TXT_DIR  = ROOT_DIR / "EFTs txt"
 OUTPUT_JSON_DIR = ROOT_DIR / "EFTs json"
 IBGE_FILE       = ROOT_DIR / "ibge_codes.json"
+AI_PROVIDER     = DEFAULT_PROVIDER
+AI_MODEL        = None
 
 
 # ---------------------------------------------------------------------------
-# Claude CLI helpers
+# AI CLI helpers
 # ---------------------------------------------------------------------------
 
-def _clean_env() -> dict:
-    """Remove CLAUDECODE para permitir chamada aninhada a partir do Claude Code."""
-    env = os.environ.copy()
-    env.pop("CLAUDECODE", None)
-    return env
-
-
-def call_claude(prompt: str, timeout: int = 120) -> str:
-    """Chama o claude CLI via stdin. Sem API keys."""
-    if not shutil.which("claude"):
-        raise RuntimeError(
-            "claude CLI não encontrado no PATH. "
-            "Execute: npm install -g @anthropic-ai/claude-code"
-        )
-    result = subprocess.run(
-        ["claude", "--print"],
-        input=prompt, env=_clean_env(),
-        capture_output=True, text=True, encoding="utf-8", timeout=timeout
+def call_provider(prompt: str, timeout: int = 120, image_path: str | None = None) -> str:
+    return call_ai(
+        prompt, provider=AI_PROVIDER, model=AI_MODEL,
+        image_path=image_path, timeout=timeout
     )
-    if result.returncode != 0:
-        raise RuntimeError(f"claude CLI erro: {result.stderr[:500]}")
-    return result.stdout.strip()
-
-
-def call_claude_with_image(prompt: str, image_path: str, timeout: int = 60) -> str:
-    """Usa claude CLI para transcrever uma imagem via ferramenta Read."""
-    if not shutil.which("claude"):
-        raise RuntimeError(
-            "claude CLI não encontrado no PATH. "
-            "Execute: npm install -g @anthropic-ai/claude-code"
-        )
-    full_prompt = (
-        f"{prompt}\n\n"
-        f"Use a ferramenta Read para ler o arquivo de imagem: {image_path}"
-    )
-    result = subprocess.run(
-        ["claude", "--print", "--dangerously-skip-permissions", "--tools", "Read"],
-        input=full_prompt,
-        env=_clean_env(),
-        capture_output=True, text=True, encoding="utf-8", timeout=timeout
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Erro ao transcrever imagem: {result.stderr[:300]}")
-    return result.stdout.strip()
 
 
 IMAGE_PROMPT = (
@@ -132,7 +96,7 @@ def convert_pdf_to_text(pdf_path: Path) -> str:
             image_counter += 1
             print(f"    Transcrevendo imagem {image_counter} (pag {page_num + 1})...")
             try:
-                transcription = call_claude_with_image(IMAGE_PROMPT, str(tmp_img))
+                transcription = call_provider(IMAGE_PROMPT, timeout=60, image_path=str(tmp_img))
                 lines.append(f"\n[IMAGEM {image_counter} TRANSCRITA]")
                 lines.append(transcription)
                 lines.append(f"[FIM IMAGEM {image_counter}]\n")
@@ -204,7 +168,7 @@ def convert_docx_to_text(docx_path: Path) -> str:
                         image_counter += 1
                         print(f"    Transcrevendo imagem {image_counter}: {img_name} ...")
                         try:
-                            transcription = call_claude_with_image(IMAGE_PROMPT, str(tmp_img))
+                            transcription = call_provider(IMAGE_PROMPT, timeout=60, image_path=str(tmp_img))
                             lines.append(f"\n[IMAGEM {image_counter} TRANSCRITA - {img_name}]")
                             lines.append(transcription)
                             lines.append(f"[FIM DA IMAGEM {image_counter}]\n")
@@ -292,7 +256,7 @@ Retorne SOMENTE o JSON (sem markdown, sem explicação):"""
 
 def extract_json_from_txt(txt_content: str, stem: str, out_path: Path, timeout: int = 120) -> bool:
     """
-    Chama o claude CLI para extrair o JSON estruturado do conteúdo TXT.
+    Chama a CLI de IA selecionada para extrair o JSON estruturado do conteúdo TXT.
     Salva em out_path. Retorna True se bem-sucedido.
     """
     # Limita tamanho para evitar prompts muito longos (mantém início + fim)
@@ -310,9 +274,9 @@ def extract_json_from_txt(txt_content: str, stem: str, out_path: Path, timeout: 
     prompt = JSON_EXTRACTION_PROMPT_TEMPLATE.format(txt_content=txt_trimmed)
 
     try:
-        raw = call_claude(prompt, timeout=timeout)
+        raw = call_provider(prompt, timeout=timeout)
     except Exception as e:
-        print(f"  [ERRO JSON] claude CLI: {e}")
+        print(f"  [ERRO JSON] {AI_PROVIDER} CLI: {e}")
         return False
 
     # Extrai JSON do output (remove eventuais blocos markdown)
@@ -480,7 +444,19 @@ def process_file(src_path: Path, file_type: str, force: bool, skip_json: bool) -
 # ---------------------------------------------------------------------------
 
 def main():
+    global AI_PROVIDER, AI_MODEL
+
+    try:
+        AI_PROVIDER = validate_provider(option_value(sys.argv, "--provider", DEFAULT_PROVIDER))
+        AI_MODEL = option_value(sys.argv, "--model")
+        version = check_provider(AI_PROVIDER)
+    except (ValueError, RuntimeError) as e:
+        print(f"ERRO: {e}")
+        sys.exit(1)
+
     print("=== Etapa 2: Conversão EFT -> TXT + JSON ===\n")
+    print(f"  Provedor IA:  {AI_PROVIDER} ({version})")
+    print(f"  Modelo:       {AI_MODEL or 'padrao da CLI'}")
     print(f"  Entrada PDF:  {INPUT_DIR_PDF}")
     print(f"  Entrada DOCX: {INPUT_DIR_DOCX}")
     print(f"  Saida TXT:    {OUTPUT_TXT_DIR}")
