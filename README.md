@@ -1,3 +1,6 @@
+![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white)
+![ChatGPT](https://img.shields.io/badge/chatGPT-74aa9c?style=for-the-badge&logo=openai&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
 # Automação — Classes Municipais NFS-e
 
 Pipeline para criação automática de classes ABAP municipais do pacote `/S4TAX/NFSE`, partindo das especificações funcionais (EFTs) até os arquivos `.clas.abap` prontos para uso.
