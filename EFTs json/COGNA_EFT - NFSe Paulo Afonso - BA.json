@@ -1,0 +1,59 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Paulo Afonso",
+  "estado": "BA",
+  "titulo_programa": "/s4tax/nfse_ba2924009",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsExigibilidadeIss",
+    "tsTipoRps",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Prefeitura de Paulo Afonso/BA utiliza padrão próprio; implementação iniciará com padrão ABRASF e será ajustada caso necessário",
+    "Série: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo (tsTipoRps): enviar fixo valor = 1 (RPS)",
+    "Regime especial de tributação: preencher somente em caso de MEI/Simples Nacional, não se aplica à maioria dos clientes Seidor",
+    "Código de cancelamento com base na tabela de Erros e alertas da prefeitura",
+    "Códigos de cancelamento 3 (Erro de assinatura) e 5 (Erro de processamento) são de uso restrito da Administração Tributária Municipal"
+  ],
+  "regras_tecnicas": [
+    "Data: formato AAAA-MM-DD",
+    "Data/Hora: formato AAAA-MM-DDTHH:mm:ss",
+    "Valores decimais: formato 0.00, sem separador de milhar, ponto como separador decimal (exemplo: 1234.56)",
+    "Valores percentuais: formato 00.00 em forma fracionária com 5 dígitos, ponto como separador decimal (exemplo: 25.5 para 25,5%)",
+    "Campos de regime especial de tributação configuráveis via transação /S4TAX/NFSE_003"
+  ],
+  "regras_cancelamento": [
+    "Código 1: Erro na emissão",
+    "Código 2: Serviço não prestado",
+    "Código 3: Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "Código 4: Duplicidade da nota",
+    "Código 5: Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data: AAAA-MM-DD",
+    "Data/Hora: AAAA-MM-DDTHH:mm:ss",
+    "Decimal: formato 0.00, sem separador de milhar, ponto como separador da parte inteira e fracionária",
+    "Percentual: formato 00.00 em forma fracionária com 5 dígitos, ponto como separador decimal"
+  ]
+}

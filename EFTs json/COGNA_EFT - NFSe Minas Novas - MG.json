@@ -1,0 +1,53 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Minas Novas",
+  "estado": "MG",
+  "titulo_programa": "/s4tax/nfse_mg3141801",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-23",
+  "abrasf_versao": "2.04",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Serie: seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: enviar fixo valor = 1 (RPS)",
+    "Exigibilidade ISS: 1=Exigível, 2=Não Incidência, 3=Isenção, 4=Exportação, 5=Imunidade, 6=Exigibilidade Suspensa por Decisão Judicial, 7=Exigibilidade Suspensa por Processo Administrativo",
+    "Regime Tributação: preencher somente em caso de MEI/Simples Nacional; não se aplica à maioria dos clientes Seidor",
+    "Regime Especial de Tributação configurável via /S4TAX/NFSE_003: 1=Microempresa municipal, 2=Estimativa, 3=Sociedade de profissionais, 4=Cooperativa, 5=MEI, 6=ME EPP"
+  ],
+  "regras_tecnicas": [
+    "Padrão ABRASF versão 2.04 utilizado pela Prefeitura de Minas Novas/MG",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento baseado na tabela de Erros e alertas",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": null,
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: formato 0.00 sem separador de milhar, ponto como separador decimal (ex: 1234.56)",
+    "Valores Percentuais: formato 00.00 em forma fracionária com 5 dígitos (ex: 25.5 para 25,5%)"
+  ]
+}

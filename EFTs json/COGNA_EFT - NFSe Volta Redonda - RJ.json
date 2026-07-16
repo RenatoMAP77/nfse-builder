@@ -1,0 +1,55 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Volta Redonda",
+  "estado": "RJ",
+  "titulo_programa": "/s4tax/nfse_rj3306305",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-26",
+  "abrasf_versao": "2.03",
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "tsTipoRps",
+    "tsExigibilidadeIss",
+    "tsRegimeEspecialTributacao",
+    "tsCodigoCancelamentoNfse"
+  ],
+  "regras_negocio": [
+    "Série: Seguir o que estiver cadastrado no SAP x Orbit",
+    "Tipo: Enviar fixo valor = 1",
+    "Regime Tributação: preenchido somente em caso de MEI/Simples Nacional",
+    "Regime especial de tributação configurado via transação /S4TAX/NFSE_003"
+  ],
+  "regras_tecnicas": [
+    "Utilizar padrão ABRASF 2.03",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura"
+  ],
+  "regras_cancelamento": [
+    "Código de cancelamento com base na tabela de Erros e alertas",
+    "1 – Erro na emissão",
+    "2 – Serviço não prestado",
+    "3 – Erro de assinatura (uso restrito da Administração Tributária Municipal)",
+    "4 – Duplicidade da nota",
+    "5 – Erro de processamento (uso restrito da Administração Tributária Municipal)"
+  ],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Data (date): AAAA-MM-DD",
+    "Data/Hora (datetime): AAAA-MM-DDTHH:mm:ss",
+    "Valores Decimais: formato 0.00, sem separador de milhar, ponto separa parte inteira da fracionária",
+    "Valores Percentuais: formato 00.00, 5 dígitos, ponto separa parte inteira da fracionária"
+  ]
+}

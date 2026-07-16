@@ -295,12 +295,44 @@ Crie a classe ABAP para o município abaixo:
 5. NUNCA usar inline declarations, VALUE #(), NEW #(), COND #() — compatibilidade ABAP < 7.40
 6. Sem prefixos húngaros em variáveis (sem lo_, lv_, lt_ etc.)
 7. `get_reasons_cancellation` é de interface: declarar como `/s4tax/infse_data~get_reasons_cancellation REDEFINITION`.
-   Quando o EFT listar os códigos de cancelamento, mapear CADA código (normalmente 1..5) e o caso default,
-   preenchendo SEMPRE os DOIS campos do resultado: `result-code` (o código) E `result-motivo` (o texto).
-   O parâmetro de entrada é `reason_domain`. Exemplo de cada ramo:
-   `result-code = '1'. result-motivo = 'Erro na emissao'.`
-8. Retornar SOMENTE o código ABAP — sem markdown, sem texto antes ou depois
-9. Começar com `CLASS {class_name} DEFINITION` e terminar com `ENDCLASS.`
+   Quando o EFT listar os códigos de cancelamento, mapear CADA código (normalmente 1..5) e o caso default
+   usando `CASE code. WHEN '1'. ... WHEN OTHERS. ... ENDCASE.` — NUNCA `IF/ELSEIF/ELSE` para este método.
+   Preencher SEMPRE os DOIS campos do resultado: `result-code` (o código) E `result-motivo` (o texto).
+   O parâmetro de entrada é `reason_domain`. Estrutura obrigatória:
+   ```abap
+   DATA code TYPE string.
+   code = reason_domain.
+   CASE code.
+     WHEN '1'.
+       result-code = '1'.
+       result-motivo = 'Erro na emissao'.
+     WHEN OTHERS.
+       result-code = '2'.
+       result-motivo = 'Servico nao prestado'.
+   ENDCASE.
+   ```
+8. Declarar SEMPRE `PROTECTED SECTION.` e `PRIVATE SECTION.` na definição da classe, mesmo vazias
+   (sem métodos/atributos) — mesmo quando só existir `PUBLIC SECTION`. O SAP emite warning de
+   sintaxe quando essas seções não são declaradas explicitamente. Ordem: `PUBLIC SECTION.`,
+   `PROTECTED SECTION.`, `PRIVATE SECTION.`, depois `ENDCLASS.`. Exemplo mínimo:
+   ```abap
+   CLASS /s4tax/nfse_{uf}{ibge} DEFINITION
+     PUBLIC
+     INHERITING FROM /s4tax/nfse_nacional
+     FINAL
+     CREATE PUBLIC.
+
+     PUBLIC SECTION.
+       CONSTANTS tax_address TYPE string VALUE '{UF} {IBGE}'.
+
+     PROTECTED SECTION.
+
+     PRIVATE SECTION.
+
+   ENDCLASS.
+   ```
+9. Retornar SOMENTE o código ABAP — sem markdown, sem texto antes ou depois
+10. Começar com `CLASS {class_name} DEFINITION` e terminar com `ENDCLASS.`
 """
 
 
