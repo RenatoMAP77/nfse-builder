@@ -1,0 +1,47 @@
+{
+  "tipo_documento": "EFT",
+  "cliente": "COGNA",
+  "projeto": "COGNA_OUTBOUND",
+  "municipio": "Três Rios",
+  "estado": "RJ",
+  "titulo_programa": "/s4tax/nfse_rj3306008",
+  "versao_documento": "1.0",
+  "data_documento": "2026-03-24",
+  "abrasf_versao": null,
+  "transacoes_sap": [
+    "/S4TAX/NFSE_001",
+    "/S4TAX/NFSE_002",
+    "/S4TAX/NFSE_003"
+  ],
+  "tabelas_sap": [],
+  "classes_tecnicas": [
+    "/S4TAX/TNFSECLAS",
+    "/S4TAX/TNFSE_IMP"
+  ],
+  "campos_xml": [
+    "Usuário",
+    "Senha",
+    "Código do serviço",
+    "Alíquota",
+    "Impostos Federais e ISS",
+    "Local de retenção"
+  ],
+  "regras_negocio": [
+    "Integração NFS-e com a Prefeitura de Três Rios/RJ utiliza padrão próprio sem muita documentação",
+    "Principais campos do WSDL: Usuário, Senha, Código do serviço, Alíquota, Impostos Federais e ISS, Local de retenção"
+  ],
+  "regras_tecnicas": [
+    "Campos numéricos obrigatórios: enviar 0.00 se vazio",
+    "XML não tem namespace",
+    "Não usa padrão ABRASF",
+    "Ordem das tags importa",
+    "Envio geralmente como string dentro do SOAP",
+    "Validação das Tags de XML x Layout de modelo da Prefeitura"
+  ],
+  "regras_cancelamento": [],
+  "regras_competencia": [],
+  "formatos_dados": [
+    "Datas em formato brasileiro (quando existir)",
+    "Campos numéricos vazios enviados como 0.00"
+  ]
+}

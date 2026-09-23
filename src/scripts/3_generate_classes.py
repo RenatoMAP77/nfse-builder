@@ -316,14 +316,14 @@ Crie a classe ABAP para o município abaixo:
    sintaxe quando essas seções não são declaradas explicitamente. Ordem: `PUBLIC SECTION.`,
    `PROTECTED SECTION.`, `PRIVATE SECTION.`, depois `ENDCLASS.`. Exemplo mínimo:
    ```abap
-   CLASS /s4tax/nfse_{uf}{ibge} DEFINITION
+   CLASS /s4tax/nfse_{{uf}}{{ibge}} DEFINITION
      PUBLIC
      INHERITING FROM /s4tax/nfse_nacional
      FINAL
      CREATE PUBLIC.
 
      PUBLIC SECTION.
-       CONSTANTS tax_address TYPE string VALUE '{UF} {IBGE}'.
+       CONSTANTS tax_address TYPE string VALUE '{{UF}} {{IBGE}}'.
 
      PROTECTED SECTION.
 
